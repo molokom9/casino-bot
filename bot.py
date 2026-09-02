@@ -237,16 +237,17 @@ HTML = '''<!DOCTYPE html>
         }
         
         .slot.spinning {
-            animation: slotSpin 0.8s cubic-bezier(0.1, 0.8, 0.2, 1);
+            animation: slotSpin 1.2s cubic-bezier(0.1, 0.8, 0.2, 1);
         }
         
         @keyframes slotSpin {
             0% { transform: rotateX(0) scale(1); }
-            20% { transform: rotateX(180deg) scale(1.1); }
-            40% { transform: rotateX(360deg) scale(1); }
-            60% { transform: rotateX(540deg) scale(1.1); }
-            80% { transform: rotateX(720deg) scale(1); }
-            100% { transform: rotateX(720deg) scale(1); }
+            15% { transform: rotateX(180deg) scale(1.1); }
+            30% { transform: rotateX(360deg) scale(1); }
+            50% { transform: rotateX(540deg) scale(1.1); }
+            70% { transform: rotateX(720deg) scale(1); }
+            85% { transform: rotateX(810deg) scale(1.02); }
+            100% { transform: rotateX(900deg) scale(1); }
         }
         
         .slot.win {
@@ -362,10 +363,10 @@ HTML = '''<!DOCTYPE html>
         
         .result {
             text-align: center;
-            font-size: 16px;
-            font-weight: 600;
-            min-height: 40px;
-            padding: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            min-height: 50px;
+            padding: 12px;
             border-radius: 10px;
             margin-top: 14px;
             background: #0d0d15;
@@ -390,89 +391,6 @@ HTML = '''<!DOCTYPE html>
         .result.bigwin {
             color: #ffd700;
             border-color: rgba(255, 215, 0, 0.3);
-        }
-        
-        .history-section {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #1a1a2a;
-        }
-        
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        
-        .history-header h3 {
-            color: #4a4a5a;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-        
-        .history-count {
-            color: #4a4a5a;
-            font-size: 11px;
-        }
-        
-        #historyList {
-            max-height: 120px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        #historyList::-webkit-scrollbar {
-            width: 3px;
-        }
-        
-        #historyList::-webkit-scrollbar-track {
-            background: #0d0d15;
-        }
-        
-        #historyList::-webkit-scrollbar-thumb {
-            background: #2a2a3a;
-            border-radius: 2px;
-        }
-        
-        .history-item {
-            padding: 6px 12px;
-            background: #0d0d15;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            border-left: 2px solid #2a2a3a;
-            animation: slideIn 0.3s ease;
-            color: #ffffff;
-        }
-        
-        @keyframes slideIn {
-            0% { opacity: 0; transform: translateX(-10px); }
-            100% { opacity: 1; transform: translateX(0); }
-        }
-        
-        .history-item .symbols {
-            color: #8a8a9a;
-            font-size: 15px;
-            letter-spacing: 1px;
-        }
-        
-        .history-item .amount {
-            font-weight: 600;
-        }
-        
-        .history-item .amount.positive {
-            color: #00ff88;
-        }
-        
-        .history-item .amount.negative {
-            color: #ff4466;
         }
         
         .btn-close {
@@ -549,7 +467,7 @@ HTML = '''<!DOCTYPE html>
             <label>Ставка</label>
             <div class="bet-actions">
                 <button class="bet-btn" id="betMinus">−</button>
-                <input type="number" class="bet-input" id="betAmount" value="1" min="1">
+                <input type="number" class="bet-input" id="betAmount" value="25" min="25" step="25">
                 <button class="bet-btn" id="betPlus">+</button>
             </div>
         </div>
@@ -557,14 +475,6 @@ HTML = '''<!DOCTYPE html>
     </div>
     
     <div id="result" class="result">Нажми SPIN</div>
-    
-    <div class="history-section">
-        <div class="history-header">
-            <h3>📜 История</h3>
-            <span class="history-count" id="historyCount">0</span>
-        </div>
-        <div id="historyList"></div>
-    </div>
     
     <button class="btn-close" id="closeBtn">✖ Закрыть</button>
     <div class="footer">18+ · Играй ответственно</div>
@@ -588,8 +498,6 @@ const betMinus = document.getElementById('betMinus');
 const betPlus = document.getElementById('betPlus');
 const resultDiv = document.getElementById('result');
 const balanceSpan = document.getElementById('balance');
-const historyList = document.getElementById('historyList');
-const historyCount = document.getElementById('historyCount');
 
 function getUserId() {
     const p = new URLSearchParams(window.location.search);
@@ -601,26 +509,12 @@ function updateBalance(b) {
     balanceSpan.textContent = balance + ' ₴';
 }
 
-function addHistory(symbolsStr, amount) {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    const sign = amount >= 0 ? '+' : '';
-    const cls = amount >= 0 ? 'positive' : 'negative';
-    item.innerHTML = `<span class="symbols">${symbolsStr}</span><span class="amount ${cls}">${sign}${amount} ₴</span>`;
-    historyList.prepend(item);
-    
-    while (historyList.children.length > 15) {
-        historyList.removeChild(historyList.lastChild);
-    }
-    historyCount.textContent = historyList.children.length;
-}
-
 function spinSlots() {
     if (isSpinning) return;
     
-    const bet = parseInt(betInput.value) || 1;
-    if (bet <= 0 || bet > balance) {
-        resultDiv.textContent = '❌ Неверная ставка';
+    const bet = parseInt(betInput.value) || 25;
+    if (bet < 25 || bet > balance) {
+        resultDiv.textContent = '❌ Минимальная ставка 25 ₴';
         resultDiv.className = 'result lose';
         return;
     }
@@ -632,35 +526,45 @@ function spinSlots() {
     
     const slots = [s1, s2, s3];
     
-    // Поочередный запуск слотов
+    // Поочередный запуск слотов с задержкой
     let delay = 0;
     const results = [];
+    const finalResults = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
     
     slots.forEach((slot, index) => {
         setTimeout(() => {
             slot.classList.add('spinning');
-            const result = symbols[Math.floor(Math.random() * symbols.length)];
-            results[index] = result;
             
-            // Останавливаем слот через 0.8 секунды
+            // Показываем промежуточные символы во время вращения
+            let interval = setInterval(() => {
+                if (slot.classList.contains('spinning')) {
+                    slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                }
+            }, 80);
+            
+            // Останавливаем слот через 1.2 секунды
             setTimeout(() => {
-                slot.textContent = result;
+                clearInterval(interval);
+                slot.textContent = finalResults[index];
                 slot.classList.remove('spinning');
+                results[index] = finalResults[index];
                 
                 // Проверяем, все ли слоты остановились
                 if (results.length === 3 && results.every(r => r !== undefined)) {
-                    checkWin(results);
-                    isSpinning = false;
-                    spinBtn.disabled = false;
+                    setTimeout(() => {
+                        checkWin(finalResults);
+                        isSpinning = false;
+                        spinBtn.disabled = false;
+                    }, 300);
                 }
-            }, 800);
+            }, 1200);
         }, delay);
-        delay += 300;
+        delay += 350;
     });
 }
 
 function checkWin(results) {
-    const bet = parseInt(betInput.value) || 1;
+    const bet = parseInt(betInput.value) || 25;
     const [r1, r2, r3] = results;
     
     let win = 0;
@@ -668,65 +572,76 @@ function checkWin(results) {
     let className = 'lose';
     let isBigWin = false;
     
-    if (r1 === '🍉' || r2 === '🍉' || r3 === '🍉') {
-        const grapeCount = results.filter(r => r === '🍉').length;
-        if (grapeCount === 3) {
-            win = bet * 4;
-            msg = '🍉🍉🍉 ВИНОГРАД! x4!';
-            className = 'bigwin';
-            isBigWin = true;
-        } else if (grapeCount === 2) {
-            win = bet * 2;
-            msg = '🍉🍉 ДВА ВИНОГРАДА! x2!';
-            className = 'win';
-        } else {
-            win = bet * 1;
-            msg = '🍉 ВИНОГРАД! x1!';
-            className = 'win';
-        }
+    // Редкие выигрыши - только 10% шанс
+    const winChance = Math.random();
+    
+    if (winChance > 0.10) {
+        // 90% - проигрыш
+        win = 0;
+        msg = '😔 Повезет в следующий раз';
+        className = 'lose';
     }
     else if (r1 === r2 && r2 === r3) {
-        if (r1 === '💎') {
-            win = bet * 6;
-            msg = '💎💎💎 ДЖЕКПОТ! x6!';
-            className = 'bigwin';
-            isBigWin = true;
-        } else if (r1 === '7️⃣') {
-            win = bet * 5;
-            msg = '7️⃣7️⃣7️⃣ СЧАСТЛИВЧИК! x5!';
-            className = 'bigwin';
-            isBigWin = true;
-        } else if (r1 === '⭐') {
-            win = bet * 8;
-            msg = '⭐⭐⭐ СУПЕР! x8!';
-            className = 'bigwin';
-            isBigWin = true;
+        // Джекпот - 0.5% шанс
+        if (Math.random() < 0.05) {
+            if (r1 === '💎') {
+                win = bet * 10;
+                msg = '💎💎💎 ДЖЕКПОТ! x10!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else if (r1 === '7️⃣') {
+                win = bet * 8;
+                msg = '7️⃣7️⃣7️⃣ СЧАСТЛИВЧИК! x8!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else if (r1 === '⭐') {
+                win = bet * 12;
+                msg = '⭐⭐⭐ СУПЕР! x12!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else {
+                win = bet * 4;
+                msg = '🎉 ТРИ ' + r1 + '! x4!';
+                className = 'win';
+            }
         } else {
-            win = bet * 3;
-            msg = '🎉 ТРИ ' + r1 + '! x3!';
-            className = 'win';
+            win = 0;
+            msg = '😔 Почти получилось!';
+            className = 'lose';
         }
     }
     else if (r1 === r2 || r2 === r3 || r1 === r3) {
-        win = bet * 1.5;
-        msg = '✨ ПАРА! x1.5!';
-        className = 'win';
+        // Пара - 2% шанс
+        if (Math.random() < 0.2) {
+            win = bet * 1.5;
+            msg = '✨ ПАРА! x1.5!';
+            className = 'win';
+        } else {
+            win = 0;
+            msg = '😔 Почти получилось!';
+            className = 'lose';
+        }
     }
     else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
-        win = bet * 1;
-        msg = '💎 БРИЛЛИАНТ! x1!';
-        className = 'win';
-    }
-    else if (r1 === '⭐' || r2 === '⭐' || r3 === '⭐') {
-        win = bet * 1.5;
-        msg = '⭐ ЗВЕЗДА! x1.5!';
-        className = 'win';
+        // Бриллиант - 1% шанс
+        if (Math.random() < 0.1) {
+            win = bet * 1.5;
+            msg = '💎 БРИЛЛИАНТ! x1.5!';
+            className = 'win';
+        } else {
+            win = 0;
+            msg = '😔 Повезет в следующий раз';
+            className = 'lose';
+        }
     }
     else {
         win = 0;
         msg = '😔 Повезет в следующий раз';
         className = 'lose';
     }
+    
+    // Убеждаемся, что win целое число
+    win = Math.floor(win);
     
     const net = win - bet;
     balance += net;
@@ -742,8 +657,6 @@ function checkWin(results) {
     
     resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + ' ₴';
     resultDiv.className = 'result ' + className;
-    
-    addHistory(results.join(' '), net);
     
     const userId = getUserId();
     if (userId) {
@@ -779,20 +692,21 @@ setInterval(loadBalance, 10000);
 spinBtn.addEventListener('click', spinSlots);
 
 betMinus.addEventListener('click', () => {
-    let val = parseInt(betInput.value) || 1;
-    val = Math.max(val - 1, 1);
+    let val = parseInt(betInput.value) || 25;
+    val = Math.max(val - 25, 25);
     betInput.value = val;
 });
 
 betPlus.addEventListener('click', () => {
-    let val = parseInt(betInput.value) || 1;
-    val = Math.min(val + 1, balance);
+    let val = parseInt(betInput.value) || 25;
+    val = Math.min(val + 25, balance);
     betInput.value = val;
 });
 
 betInput.addEventListener('change', () => {
-    let val = parseInt(betInput.value) || 1;
-    if (val < 1) val = 1;
+    let val = parseInt(betInput.value) || 25;
+    if (val < 25) val = 25;
+    if (val % 25 !== 0) val = Math.round(val / 25) * 25;
     if (val > balance) val = balance;
     betInput.value = val;
 });
@@ -936,91 +850,114 @@ def admin_callback(call):
             start(call.message)
 
 def show_users_list(message):
-    with app.app_context():
-        users = User.query.order_by(User.balance.desc()).all()
-        text = "👥 **Список пользователей**\n\n"
-        for i, u in enumerate(users[:20], 1):
-            text += f"{i}. {u.first_name} (@{u.username or 'нет'})\n"
-            text += f"   ID: `{u.telegram_id}` | Баланс: {u.balance} ₴\n\n"
-        
-        if len(users) > 20:
-            text += f"... и ещё {len(users) - 20} пользователей"
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("🔄 Обновить", callback_data="admin_users"))
-        markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
-        
-        bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
-
-def admin_find_user(message):
-    query = message.text.strip()
-    
-    with app.app_context():
-        if query.startswith('@'):
-            username = query[1:]
-            user = User.query.filter_by(username=username).first()
-        else:
-            user = User.query.filter_by(telegram_id=query).first()
-        
-        if user:
+    try:
+        with app.app_context():
+            users = User.query.order_by(User.balance.desc()).all()
+            
+            if not users:
+                bot.send_message(message.chat.id, "📋 **Список пользователей пуст**\n\nПока нет зарегистрированных пользователей.", parse_mode='Markdown')
+                return
+            
+            text = "👥 **Список пользователей**\n\n"
+            count = 0
+            for i, u in enumerate(users[:20], 1):
+                text += f"{i}. {u.first_name} (@{u.username or 'нет'})\n"
+                text += f"   ID: `{u.telegram_id}` | Баланс: {u.balance} ₴\n\n"
+                count += 1
+            
+            if len(users) > 20:
+                text += f"... и ещё {len(users) - 20} пользователей"
+            
             markup = InlineKeyboardMarkup()
-            markup.row(
-                InlineKeyboardButton("➕ Выдать", callback_data=f"admin_action_{user.telegram_id}_give"),
-                InlineKeyboardButton("➖ Забрать", callback_data=f"admin_action_{user.telegram_id}_take")
-            )
-            markup.row(
-                InlineKeyboardButton("🗑 Удалить", callback_data=f"admin_action_{user.telegram_id}_delete"),
-                InlineKeyboardButton("👑 Сделать админом", callback_data=f"admin_action_{user.telegram_id}_makeadmin")
-            )
+            markup.row(InlineKeyboardButton("🔄 Обновить", callback_data="admin_users"))
             markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
             
-            bot.send_message(
-                message.chat.id,
-                f"👤 **Найден пользователь**\n\n"
-                f"ID: `{user.telegram_id}`\n"
-                f"Имя: {user.first_name}\n"
-                f"Юзернейм: @{user.username or 'нет'}\n"
-                f"💰 Баланс: {user.balance} ₴\n"
-                f"🎮 Игр: {user.games_played}\n"
-                f"🏆 Выиграно: {user.total_won} ₴\n"
-                f"💔 Проиграно: {user.total_lost} ₴\n"
-                f"👑 Админ: {'Да' if user.is_admin else 'Нет'}",
-                reply_markup=markup,
-                parse_mode='Markdown'
-            )
-        else:
-            bot.send_message(message.chat.id, "❌ Пользователь не найден")
+            bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка при загрузке списка: {str(e)}")
 
-def handle_user_action(message, target_id, action):
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=target_id).first()
-        if not user:
-            bot.send_message(message.chat.id, "❌ Пользователь не найден")
+def admin_find_user(message):
+    try:
+        query = message.text.strip()
+        
+        if not query:
+            bot.send_message(message.chat.id, "❌ Введите ID или username!")
             return
         
-        if action == "give":
-            bot.send_message(message.chat.id, f"Введите сумму для выдачи пользователю {user.first_name}:")
-            bot.register_next_step_handler(message, lambda m: admin_give_currency(m, target_id))
-        
-        elif action == "take":
-            bot.send_message(message.chat.id, f"Введите сумму для забора у пользователя {user.first_name}:")
-            bot.register_next_step_handler(message, lambda m: admin_take_currency(m, target_id))
-        
-        elif action == "delete":
-            db.session.delete(user)
-            db.session.commit()
-            bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} удалён!")
-        
-        elif action == "makeadmin":
-            user.is_admin = True
-            db.session.commit()
-            bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} теперь администратор!")
+        with app.app_context():
+            if query.startswith('@'):
+                username = query[1:]
+                user = User.query.filter_by(username=username).first()
+            else:
+                user = User.query.filter_by(telegram_id=query).first()
+            
+            if user:
+                markup = InlineKeyboardMarkup()
+                markup.row(
+                    InlineKeyboardButton("➕ Выдать", callback_data=f"admin_action_{user.telegram_id}_give"),
+                    InlineKeyboardButton("➖ Забрать", callback_data=f"admin_action_{user.telegram_id}_take")
+                )
+                markup.row(
+                    InlineKeyboardButton("🗑 Удалить", callback_data=f"admin_action_{user.telegram_id}_delete"),
+                    InlineKeyboardButton("👑 Сделать админом", callback_data=f"admin_action_{user.telegram_id}_makeadmin")
+                )
+                markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
+                
+                bot.send_message(
+                    message.chat.id,
+                    f"👤 **Найден пользователь**\n\n"
+                    f"ID: `{user.telegram_id}`\n"
+                    f"Имя: {user.first_name}\n"
+                    f"Юзернейм: @{user.username or 'нет'}\n"
+                    f"💰 Баланс: {user.balance} ₴\n"
+                    f"🎮 Игр: {user.games_played}\n"
+                    f"🏆 Выиграно: {user.total_won} ₴\n"
+                    f"💔 Проиграно: {user.total_lost} ₴\n"
+                    f"👑 Админ: {'Да' if user.is_admin else 'Нет'}",
+                    reply_markup=markup,
+                    parse_mode='Markdown'
+                )
+            else:
+                bot.send_message(message.chat.id, "❌ Пользователь не найден. Проверьте ID или username.")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
+
+def handle_user_action(message, target_id, action):
+    try:
+        with app.app_context():
+            user = User.query.filter_by(telegram_id=target_id).first()
+            if not user:
+                bot.send_message(message.chat.id, "❌ Пользователь не найден")
+                return
+            
+            if action == "give":
+                bot.send_message(message.chat.id, f"Введите сумму для выдачи пользователю {user.first_name} (кратно 25):")
+                bot.register_next_step_handler(message, lambda m: admin_give_currency(m, target_id))
+            
+            elif action == "take":
+                bot.send_message(message.chat.id, f"Введите сумму для забора у пользователя {user.first_name} (кратно 25):")
+                bot.register_next_step_handler(message, lambda m: admin_take_currency(m, target_id))
+            
+            elif action == "delete":
+                db.session.delete(user)
+                db.session.commit()
+                bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} удалён!")
+            
+            elif action == "makeadmin":
+                user.is_admin = True
+                db.session.commit()
+                bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} теперь администратор!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 def admin_give_currency(message, target_id):
     try:
         amount = int(message.text.strip())
         if amount <= 0:
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
+            return
+        if amount % 25 != 0:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть кратна 25")
             return
         
         with app.app_context():
@@ -1031,14 +968,19 @@ def admin_give_currency(message, target_id):
                 bot.send_message(message.chat.id, f"✅ Выдано {amount} ₴ пользователю {user.first_name}")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
+    except ValueError:
         bot.send_message(message.chat.id, "❌ Введите число!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 def admin_take_currency(message, target_id):
     try:
         amount = int(message.text.strip())
         if amount <= 0:
             bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
+            return
+        if amount % 25 != 0:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть кратна 25")
             return
         
         with app.app_context():
@@ -1052,8 +994,10 @@ def admin_take_currency(message, target_id):
                     bot.send_message(message.chat.id, "❌ Недостаточно средств")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
+    except ValueError:
         bot.send_message(message.chat.id, "❌ Введите число!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 @bot.message_handler(commands=['balance'])
 def balance_command(message):
