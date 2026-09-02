@@ -12,6 +12,7 @@ import random
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3hPqWkXs')
 WEBAPP_URL = os.environ.get('WEBAPP_URL', 'https://casino-bot-mw0h.onrender.com/')
 ADMIN_ID = '8663798936'
+REFILL_LINK = 'https://t.me/Qwile_Games'
 
 # ========== БАЗА ДАННЫХ ==========
 app = Flask(__name__)
@@ -151,7 +152,7 @@ HTML = '''<!DOCTYPE html>
             border: 1px solid #2a2a3a;
             border-radius: 14px;
             padding: 14px 18px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -176,11 +177,34 @@ HTML = '''<!DOCTYPE html>
             color: #6a6a7a;
         }
         
+        .btn-refill {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #00d4ff, #0088cc);
+            color: #ffffff;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-refill:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 30px rgba(0, 212, 255, 0.2);
+        }
+        
         .slots-container {
             background: #0d0d15;
             border-radius: 16px;
             padding: 24px 16px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             border: 1px solid #1a1a2a;
         }
         
@@ -351,6 +375,7 @@ HTML = '''<!DOCTYPE html>
             align-items: center;
             justify-content: center;
             gap: 8px;
+            color: #ffffff;
         }
         
         .result.win {
@@ -425,6 +450,7 @@ HTML = '''<!DOCTYPE html>
             font-size: 13px;
             border-left: 2px solid #2a2a3a;
             animation: slideIn 0.3s ease;
+            color: #ffffff;
         }
         
         @keyframes slideIn {
@@ -506,8 +532,10 @@ HTML = '''<!DOCTYPE html>
     
     <div class="balance-card">
         <span class="balance-label">💰 Баланс</span>
-        <span class="balance-value" id="balance">1000 <small>₽</small></span>
+        <span class="balance-value" id="balance">1000 <small>₴</small></span>
     </div>
+    
+    <a href="https://t.me/Qwile_Games" class="btn-refill" target="_blank">💳 ПОПОЛНИТЬ</a>
     
     <div class="slots-container">
         <div class="slots">
@@ -571,7 +599,7 @@ function getUserId() {
 
 function updateBalance(b) {
     balance = b;
-    balanceSpan.textContent = balance + ' ₽';
+    balanceSpan.textContent = balance + ' ₴';
 }
 
 function addHistory(symbolsStr, amount) {
@@ -579,7 +607,7 @@ function addHistory(symbolsStr, amount) {
     item.className = 'history-item';
     const sign = amount >= 0 ? '+' : '';
     const cls = amount >= 0 ? 'positive' : 'negative';
-    item.innerHTML = `<span class="symbols">${symbolsStr}</span><span class="amount ${cls}">${sign}${amount} ₽</span>`;
+    item.innerHTML = `<span class="symbols">${symbolsStr}</span><span class="amount ${cls}">${sign}${amount} ₴</span>`;
     historyList.prepend(item);
     
     while (historyList.children.length > 15) {
@@ -722,7 +750,7 @@ function checkWin(results) {
         }, 800);
     }
     
-    resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + ' ₽';
+    resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + ' ₴';
     resultDiv.className = 'result ' + className;
     
     addHistory(results.join(' '), net);
@@ -835,6 +863,21 @@ def game_result():
     
     return jsonify({'status': 'ok'})
 
+@app.route('/admin/users')
+def admin_users():
+    users = User.query.order_by(User.balance.desc()).all()
+    result = []
+    for u in users:
+        result.append({
+            'id': u.telegram_id,
+            'name': u.first_name,
+            'username': u.username,
+            'balance': u.balance,
+            'games': u.games_played,
+            'is_admin': u.is_admin
+        })
+    return jsonify(result)
+
 # ========== КОМАНДЫ БОТА ==========
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -864,10 +907,10 @@ def start(message):
     bot.send_message(
         message.chat.id,
         f"🎲 Добро пожаловать в Casino Royale, {message.from_user.first_name}!\n\n"
-        f"💰 Ваш баланс: {user.balance} ₽\n"
+        f"💰 Ваш баланс: {user.balance} ₴\n"
         f"🎮 Игр сыграно: {user.games_played}\n"
-        f"🏆 Выиграно: {user.total_won} ₽\n"
-        f"💔 Проиграно: {user.total_lost} ₽\n\n"
+        f"🏆 Выиграно: {user.total_won} ₴\n"
+        f"💔 Проиграно: {user.total_lost} ₴\n\n"
         "⬇️ Нажми кнопку ниже, чтобы открыть игровой зал!",
         reply_markup=markup
     )
@@ -885,9 +928,9 @@ def callback(call):
         if call.data == "balance":
             bot.answer_callback_query(
                 call.id,
-                f"💰 Баланс: {user.balance} ₽\n"
-                f"🏆 Выиграно: {user.total_won} ₽\n"
-                f"💔 Проиграно: {user.total_lost} ₽\n"
+                f"💰 Баланс: {user.balance} ₴\n"
+                f"🏆 Выиграно: {user.total_won} ₴\n"
+                f"💔 Проиграно: {user.total_lost} ₴\n"
                 f"🎮 Игр: {user.games_played}",
                 show_alert=True
             )
@@ -897,9 +940,9 @@ def callback(call):
                 call.id,
                 f"📊 Статистика:\n"
                 f"🎮 Игр: {user.games_played}\n"
-                f"🏆 Выигрышей: {user.total_won} ₽\n"
-                f"💔 Проигрышей: {user.total_lost} ₽\n"
-                f"💰 Баланс: {user.balance} ₽",
+                f"🏆 Выигрышей: {user.total_won} ₴\n"
+                f"💔 Проигрышей: {user.total_lost} ₴\n"
+                f"💰 Баланс: {user.balance} ₴",
                 show_alert=True
             )
         
@@ -909,14 +952,12 @@ def callback(call):
 def show_admin_panel(message, admin):
     markup = InlineKeyboardMarkup()
     markup.row(
-        InlineKeyboardButton("➕ Выдать", callback_data="admin_give"),
-        InlineKeyboardButton("➖ Забрать", callback_data="admin_take")
+        InlineKeyboardButton("📋 Список пользователей", callback_data="admin_users"),
+        InlineKeyboardButton("🔍 Найти пользователя", callback_data="admin_find")
     )
     markup.row(
-        InlineKeyboardButton("👤 Инфо", callback_data="admin_info"),
-        InlineKeyboardButton("📊 Топ", callback_data="admin_top")
+        InlineKeyboardButton("🔙 Назад", callback_data="back")
     )
-    markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
     
     bot.send_message(
         message.chat.id,
@@ -935,91 +976,142 @@ def admin_callback(call):
             bot.answer_callback_query(call.id, "Нет прав!")
             return
         
-        if call.data == "admin_give":
-            bot.send_message(call.message.chat.id, "Введите ID и сумму:\n`123456789 100`", parse_mode='Markdown')
-            bot.register_next_step_handler(call.message, admin_give_currency)
+        if call.data == "admin_users":
+            show_users_list(call.message)
         
-        elif call.data == "admin_take":
-            bot.send_message(call.message.chat.id, "Введите ID и сумму:\n`123456789 50`", parse_mode='Markdown')
-            bot.register_next_step_handler(call.message, admin_take_currency)
+        elif call.data == "admin_find":
+            bot.send_message(call.message.chat.id, "Введите ID пользователя или username (с @):")
+            bot.register_next_step_handler(call.message, admin_find_user)
         
-        elif call.data == "admin_info":
-            bot.send_message(call.message.chat.id, "Введите ID пользователя:")
-            bot.register_next_step_handler(call.message, admin_get_user_info)
-        
-        elif call.data == "admin_top":
-            show_top_players(call.message)
+        elif call.data.startswith("admin_action_"):
+            parts = call.data.split("_")
+            target_id = parts[2]
+            action = parts[3]
+            handle_user_action(call.message, target_id, action)
         
         elif call.data == "back":
             start(call.message)
 
-def admin_give_currency(message):
+def show_users_list(message):
+    with app.app_context():
+        users = User.query.order_by(User.balance.desc()).all()
+        text = "👥 **Список пользователей**\n\n"
+        for i, u in enumerate(users[:20], 1):
+            text += f"{i}. {u.first_name} (@{u.username or 'нет'})\n"
+            text += f"   ID: `{u.telegram_id}` | Баланс: {u.balance} ₴\n\n"
+        
+        if len(users) > 20:
+            text += f"... и ещё {len(users) - 20} пользователей"
+        
+        # Кнопка обновления
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("🔄 Обновить", callback_data="admin_users"))
+        markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
+        
+        bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
+
+def admin_find_user(message):
+    query = message.text.strip()
+    
+    with app.app_context():
+        if query.startswith('@'):
+            username = query[1:]
+            user = User.query.filter_by(username=username).first()
+        else:
+            user = User.query.filter_by(telegram_id=query).first()
+        
+        if user:
+            markup = InlineKeyboardMarkup()
+            markup.row(
+                InlineKeyboardButton("➕ Выдать", callback_data=f"admin_action_{user.telegram_id}_give"),
+                InlineKeyboardButton("➖ Забрать", callback_data=f"admin_action_{user.telegram_id}_take")
+            )
+            markup.row(
+                InlineKeyboardButton("🗑 Удалить", callback_data=f"admin_action_{user.telegram_id}_delete"),
+                InlineKeyboardButton("👑 Сделать админом", callback_data=f"admin_action_{user.telegram_id}_makeadmin")
+            )
+            markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
+            
+            bot.send_message(
+                message.chat.id,
+                f"👤 **Найден пользователь**\n\n"
+                f"ID: `{user.telegram_id}`\n"
+                f"Имя: {user.first_name}\n"
+                f"Юзернейм: @{user.username or 'нет'}\n"
+                f"💰 Баланс: {user.balance} ₴\n"
+                f"🎮 Игр: {user.games_played}\n"
+                f"🏆 Выиграно: {user.total_won} ₴\n"
+                f"💔 Проиграно: {user.total_lost} ₴\n"
+                f"👑 Админ: {'Да' if user.is_admin else 'Нет'}",
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+        else:
+            bot.send_message(message.chat.id, "❌ Пользователь не найден")
+
+def handle_user_action(message, target_id, action):
+    with app.app_context():
+        user = User.query.filter_by(telegram_id=target_id).first()
+        if not user:
+            bot.send_message(message.chat.id, "❌ Пользователь не найден")
+            return
+        
+        if action == "give":
+            bot.send_message(message.chat.id, f"Введите сумму для выдачи пользователю {user.first_name}:")
+            bot.register_next_step_handler(message, lambda m: admin_give_currency(m, target_id))
+        
+        elif action == "take":
+            bot.send_message(message.chat.id, f"Введите сумму для забора у пользователя {user.first_name}:")
+            bot.register_next_step_handler(message, lambda m: admin_take_currency(m, target_id))
+        
+        elif action == "delete":
+            db.session.delete(user)
+            db.session.commit()
+            bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} удалён!")
+        
+        elif action == "makeadmin":
+            user.is_admin = True
+            db.session.commit()
+            bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} теперь администратор!")
+
+def admin_give_currency(message, target_id):
     try:
-        parts = message.text.split()
-        user_id = parts[0]
-        amount = int(parts[1])
+        amount = int(message.text.strip())
+        if amount <= 0:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
+            return
         
         with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
+            user = User.query.filter_by(telegram_id=target_id).first()
             if user:
                 user.balance += amount
                 db.session.commit()
-                bot.send_message(message.chat.id, f"✅ Выдано {amount} ₽ пользователю {user.first_name}")
+                bot.send_message(message.chat.id, f"✅ Выдано {amount} ₴ пользователю {user.first_name}")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
     except:
-        bot.send_message(message.chat.id, "❌ Ошибка! Формат: ID СУММА")
+        bot.send_message(message.chat.id, "❌ Введите число!")
 
-def admin_take_currency(message):
+def admin_take_currency(message, target_id):
     try:
-        parts = message.text.split()
-        user_id = parts[0]
-        amount = int(parts[1])
+        amount = int(message.text.strip())
+        if amount <= 0:
+            bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
+            return
         
         with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
+            user = User.query.filter_by(telegram_id=target_id).first()
             if user:
                 if user.balance >= amount:
                     user.balance -= amount
                     db.session.commit()
-                    bot.send_message(message.chat.id, f"✅ Забрано {amount} ₽ у {user.first_name}")
+                    bot.send_message(message.chat.id, f"✅ Забрано {amount} ₴ у {user.first_name}")
                 else:
                     bot.send_message(message.chat.id, "❌ Недостаточно средств")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
     except:
-        bot.send_message(message.chat.id, "❌ Ошибка! Формат: ID СУММА")
-
-def admin_get_user_info(message):
-    try:
-        user_id = message.text.strip()
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
-            if user:
-                bot.send_message(
-                    message.chat.id,
-                    f"👤 **Информация о пользователе**\n\n"
-                    f"ID: `{user.telegram_id}`\n"
-                    f"Имя: {user.first_name}\n"
-                    f"Юзернейм: @{user.username or 'Нет'}\n"
-                    f"💰 Баланс: {user.balance} ₽\n"
-                    f"🎮 Игр: {user.games_played}\n"
-                    f"🏆 Выиграно: {user.total_won} ₽\n"
-                    f"💔 Проиграно: {user.total_lost} ₽",
-                    parse_mode='Markdown'
-                )
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Ошибка!")
-
-def show_top_players(message):
-    with app.app_context():
-        top = User.query.order_by(User.balance.desc()).limit(10).all()
-        text = "🏆 **Топ игроков**\n\n"
-        for i, user in enumerate(top, 1):
-            text += f"{i}. {user.first_name} — {user.balance} ₽\n"
-        bot.send_message(message.chat.id, text, parse_mode='Markdown')
+        bot.send_message(message.chat.id, "❌ Введите число!")
 
 @bot.message_handler(commands=['balance'])
 def balance_command(message):
@@ -1029,9 +1121,9 @@ def balance_command(message):
         if user:
             bot.send_message(
                 message.chat.id,
-                f"💰 Баланс: {user.balance} ₽\n"
-                f"🏆 Выиграно: {user.total_won} ₽\n"
-                f"💔 Проиграно: {user.total_lost} ₽\n"
+                f"💰 Баланс: {user.balance} ₴\n"
+                f"🏆 Выиграно: {user.total_won} ₴\n"
+                f"💔 Проиграно: {user.total_lost} ₴\n"
                 f"🎮 Игр: {user.games_played}"
             )
         else:
