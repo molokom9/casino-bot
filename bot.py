@@ -4,12 +4,14 @@ from flask import Flask, request, jsonify
 import threading
 import os
 import json
+import random
+from datetime import datetime
 from database import db, User, Transaction, GameHistory, init_db
 
 # ========== КОНФИГ ==========
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3hPqWkXs')
 WEBAPP_URL = os.environ.get('WEBAPP_URL', 'https://casino-bot-mw0h.onrender.com/')
-ADMIN_ID = '8663798936'  # ВАШ TELEGRAM ID
+ADMIN_ID = '8663798936'
 
 # ========== БОТ ==========
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -20,41 +22,92 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 init_db(app)
 
-# HTML страница казино (обновленная)
+# ========== HTML СТРАНИЦА (ПРЕМИУМ ДИЗАЙН) ==========
 HTML = """
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎰 Casino Royale</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎰 CASINO ROYALE</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --gold: #ffd700;
+            --gold-dark: #b8860b;
+            --gold-glow: rgba(255, 215, 0, 0.4);
+            --dark-bg: #0a0015;
+            --card-bg: rgba(20, 0, 40, 0.95);
+            --neon-pink: #ff2d55;
+            --neon-blue: #00d4ff;
+            --neon-green: #00ff88;
+        }
         
         body {
-            font-family: 'Orbitron', sans-serif;
-            background: linear-gradient(135deg, #0a0015 0%, #1a0030 50%, #0a0015 100%);
+            font-family: 'Rajdhani', sans-serif;
+            background: radial-gradient(ellipse at center, #0a0015 0%, #1a0030 50%, #0a0015 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 10px;
+            padding: 12px;
             overflow: hidden;
-        }
-        
-        .container {
-            background: linear-gradient(145deg, rgba(20, 0, 40, 0.95), rgba(10, 0, 20, 0.98));
-            border-radius: 30px;
-            padding: 25px;
-            max-width: 420px;
-            width: 100%;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            box-shadow: 0 0 60px rgba(255, 215, 0, 0.1), inset 0 0 60px rgba(255, 215, 0, 0.05);
             position: relative;
         }
         
+        /* Фоновые частицы */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,0.3), transparent),
+                radial-gradient(2px 2px at 40% 70%, rgba(255,215,0,0.2), transparent),
+                radial-gradient(2px 2px at 60% 20%, rgba(255,215,0,0.3), transparent),
+                radial-gradient(2px 2px at 80% 80%, rgba(255,215,0,0.2), transparent),
+                radial-gradient(2px 2px at 10% 90%, rgba(255,215,0,0.1), transparent),
+                radial-gradient(2px 2px at 90% 10%, rgba(255,215,0,0.1), transparent);
+            background-size: 200px 200px;
+            animation: sparkle 4s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes sparkle {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .container {
+            background: linear-gradient(145deg, rgba(20, 0, 40, 0.97), rgba(10, 0, 20, 0.99));
+            border-radius: 32px;
+            padding: 24px 20px 20px;
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            box-shadow: 
+                0 0 80px rgba(255, 215, 0, 0.05),
+                inset 0 0 80px rgba(255, 215, 0, 0.03),
+                0 20px 60px rgba(0, 0, 0, 0.8);
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Анимированная рамка */
         .container::before {
             content: '';
             position: absolute;
@@ -62,883 +115,849 @@ HTML = """
             left: -2px;
             right: -2px;
             bottom: -2px;
-            background: linear-gradient(45deg, #ffd700, #ff6b00, #ffd700, #ff6b00);
-            background-size: 400% 400%;
-            border-radius: 30px;
+            background: conic-gradient(
+                from 0deg,
+                transparent,
+                rgba(255, 215, 0, 0.3),
+                rgba(255, 215, 0, 0.6),
+                rgba(255, 215, 0, 0.3),
+                transparent
+            );
+            border-radius: 34px;
             z-index: -1;
-            animation: gradient 3s ease infinite;
+            animation: borderRotate 4s linear infinite;
         }
         
-        @keyframes gradient {
-            0%{background-position:0% 50%}
-            50%{background-position:100% 50%}
-            100%{background-position:0% 50%}
+        @keyframes borderRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        h1 {
-            text-align: center;
-            color: #ffd700;
+        /* Шапка */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo-icon {
             font-size: 28px;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.2);
-            margin-bottom: 15px;
-            letter-spacing: 3px;
+            animation: pulse 2s ease-in-out infinite;
         }
         
-        .balance {
-            background: linear-gradient(145deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
-            padding: 12px;
-            border-radius: 15px;
-            text-align: center;
-            font-size: 22px;
-            font-weight: bold;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .logo-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ffd700, #ff6b00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+            letter-spacing: 2px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Баланс */
+        .balance-card {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 215, 0, 0.02));
+            border: 1px solid rgba(255, 215, 0, 0.12);
+            border-radius: 16px;
+            padding: 14px 20px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .balance-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,215,0,0.03) 0%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            100% { transform: translateX(100%) translateY(100%); }
+        }
+        
+        .balance-label {
+            color: rgba(255, 215, 0, 0.6);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .balance-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 26px;
+            font-weight: 900;
             color: #ffd700;
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            margin-bottom: 20px;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .balance-value .currency {
+            font-size: 16px;
+            opacity: 0.7;
+        }
+        
+        /* Слоты */
+        .slots-container {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(255, 215, 0, 0.06);
+            position: relative;
         }
         
         .slots {
             display: flex;
             justify-content: space-around;
-            margin: 20px 0;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.1);
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .slot-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
         }
         
         .slot {
             width: 80px;
             height: 80px;
             background: linear-gradient(145deg, #1a0030, #0a0015);
-            border-radius: 15px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 50px;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.1), inset 0 0 30px rgba(255, 215, 0, 0.05);
-            border: 2px solid rgba(255, 215, 0, 0.2);
-            transition: all 0.3s;
+            font-size: 44px;
+            border: 2px solid rgba(255, 215, 0, 0.1);
+            box-shadow: 
+                inset 0 0 30px rgba(255, 215, 0, 0.03),
+                0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            user-select: none;
+        }
+        
+        .slot::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(255,215,0,0.05), transparent);
+            pointer-events: none;
         }
         
         .slot.spinning {
-            animation: slotSpin 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slotSpin 0.6s cubic-bezier(0.4, 0, 0.2, 1);
             border-color: #ffd700;
-            box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.3), inset 0 0 50px rgba(255, 215, 0, 0.05);
         }
         
         @keyframes slotSpin {
             0% { transform: rotateX(0deg) scale(1); }
-            25% { transform: rotateX(90deg) scale(1.2); }
-            50% { transform: rotateX(180deg) scale(1); }
-            75% { transform: rotateX(270deg) scale(1.2); }
-            100% { transform: rotateX(360deg) scale(1); }
+            20% { transform: rotateX(180deg) scale(1.1); }
+            40% { transform: rotateX(360deg) scale(1); }
+            60% { transform: rotateX(540deg) scale(1.1); }
+            80% { transform: rotateX(720deg) scale(1); }
+            100% { transform: rotateX(720deg) scale(1); }
         }
         
-        .btn-spin {
-            background: linear-gradient(145deg, #ffd700, #ff8c00);
-            color: #0a0015;
-            border: none;
-            padding: 18px;
-            font-size: 22px;
-            font-weight: 900;
-            border-radius: 15px;
-            cursor: pointer;
-            width: 100%;
-            margin: 15px 0;
-            transition: all 0.3s;
-            font-family: 'Orbitron', sans-serif;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-            letter-spacing: 2px;
+        .slot.win-highlight {
+            border-color: #00ff88;
+            box-shadow: 0 0 40px rgba(0, 255, 136, 0.3);
+            animation: winGlow 0.8s ease;
         }
         
-        .btn-spin:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+        @keyframes winGlow {
+            0%, 100% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.3); }
+            50% { box-shadow: 0 0 80px rgba(0, 255, 136, 0.6); }
         }
         
-        .btn-spin:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        /* Управление */
+        .controls {
+            margin-bottom: 16px;
         }
         
         .bet-control {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            margin: 15px 0;
-            color: #ffd700;
+            gap: 12px;
+            margin-bottom: 12px;
         }
         
         .bet-control label {
-            font-size: 14px;
-            letter-spacing: 1px;
+            color: rgba(255, 215, 0, 0.5);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
         }
         
-        .bet-control input {
-            padding: 10px 15px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 10px;
-            width: 120px;
-            text-align: center;
-            font-size: 16px;
-            font-family: 'Orbitron', sans-serif;
-            background: rgba(0, 0, 0, 0.5);
+        .bet-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(255, 215, 0, 0.08);
+        }
+        
+        .bet-btn {
+            background: rgba(255, 215, 0, 0.08);
+            border: none;
             color: #ffd700;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Orbitron', sans-serif;
         }
         
-        .bet-control input:focus {
+        .bet-btn:hover {
+            background: rgba(255, 215, 0, 0.15);
+        }
+        
+        .bet-btn:active {
+            transform: scale(0.9);
+        }
+        
+        .bet-input {
+            background: transparent;
+            border: none;
+            color: #ffd700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: center;
+            width: 70px;
+            padding: 6px 0;
             outline: none;
-            border-color: #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
         }
         
+        .bet-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+        }
+        .bet-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+        }
+        .bet-input[type=number] {
+            -moz-appearance: textfield;
+        }
+        
+        .btn-spin {
+            background: linear-gradient(135deg, #ffd700, #f7971e);
+            color: #0a0015;
+            border: none;
+            padding: 16px 24px;
+            font-size: 20px;
+            font-weight: 900;
+            border-radius: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-spin::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 60%);
+            animation: spinShimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes spinShimmer {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            100% { transform: translateX(100%) translateY(100%); }
+        }
+        
+        .btn-spin:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 40px rgba(255, 215, 0, 0.3);
+        }
+        
+        .btn-spin:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+        
+        .btn-spin:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Результат */
         .result {
             text-align: center;
-            font-size: 20px;
-            font-weight: bold;
-            min-height: 40px;
-            margin: 15px 0;
-            padding: 10px;
-            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            min-height: 44px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            margin-bottom: 14px;
             background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
         }
         
         .result.win {
             color: #00ff88;
-            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-            animation: winPulse 0.5s ease;
+            background: rgba(0, 255, 136, 0.06);
+            border: 1px solid rgba(0, 255, 136, 0.15);
+            animation: resultWin 0.6s ease;
         }
         
         .result.lose {
-            color: #ff4444;
-            text-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+            color: #ff2d55;
+            background: rgba(255, 45, 85, 0.06);
+            border: 1px solid rgba(255, 45, 85, 0.15);
         }
         
         .result.bigwin {
             color: #ffd700;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
-            animation: bigWin 1s ease;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            animation: resultBigWin 1s ease;
         }
         
-        @keyframes winPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        @keyframes resultWin {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
         }
         
-        @keyframes bigWin {
-            0% { transform: scale(1); }
-            25% { transform: scale(1.2) rotate(-5deg); }
-            50% { transform: scale(1.2) rotate(5deg); }
-            75% { transform: scale(1.2) rotate(-5deg); }
-            100% { transform: scale(1); }
+        @keyframes resultBigWin {
+            0% { transform: scale(0.7) rotate(-5deg); opacity: 0; }
+            30% { transform: scale(1.2) rotate(3deg); }
+            60% { transform: scale(0.95) rotate(-2deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
         }
         
-        .history {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(255, 215, 0, 0.1);
+        /* История */
+        .history-section {
+            margin-top: 8px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 215, 0, 0.06);
         }
         
-        .history h3 {
-            color: #ffd700;
-            font-size: 14px;
-            letter-spacing: 2px;
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 10px;
         }
         
+        .history-header h3 {
+            color: rgba(255, 215, 0, 0.4);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .history-header span {
+            color: rgba(255, 215, 0, 0.2);
+            font-size: 10px;
+        }
+        
         #historyList {
-            max-height: 150px;
+            max-height: 130px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        #historyList::-webkit-scrollbar {
+            width: 3px;
+        }
+        
+        #historyList::-webkit-scrollbar-track {
+            background: rgba(255, 215, 0, 0.03);
+            border-radius: 2px;
+        }
+        
+        #historyList::-webkit-scrollbar-thumb {
+            background: rgba(255, 215, 0, 0.15);
+            border-radius: 2px;
         }
         
         .history-item {
-            padding: 8px 12px;
-            margin: 5px 0;
-            background: rgba(255, 215, 0, 0.05);
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.02);
             border-radius: 8px;
             display: flex;
             justify-content: space-between;
-            color: #aaa;
+            align-items: center;
             font-size: 13px;
-            border-left: 3px solid rgba(255, 215, 0, 0.2);
+            border-left: 2px solid rgba(255, 215, 0, 0.1);
+            animation: slideIn 0.3s ease;
         }
         
-        .history-item.win {
-            border-left-color: #00ff88;
+        @keyframes slideIn {
+            0% { transform: translateX(-20px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
         }
         
-        .history-item.lose {
-            border-left-color: #ff4444;
+        .history-item .symbols {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 16px;
+            letter-spacing: 2px;
         }
         
+        .history-item .amount {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .history-item .amount.positive {
+            color: #00ff88;
+        }
+        
+        .history-item .amount.negative {
+            color: #ff2d55;
+        }
+        
+        /* Кнопка закрытия */
         .btn-close {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(145deg, #ff4444, #cc0000);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            font-size: 16px;
-            font-weight: bold;
+            background: rgba(255, 255, 255, 0.03);
+            color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 14px;
             transition: all 0.3s;
-            font-family: 'Orbitron', sans-serif;
+            font-family: 'Rajdhani', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
         
         .btn-close:hover {
-            transform: scale(1.02);
-            box-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.4);
         }
         
+        .btn-close:active {
+            transform: scale(0.97);
+        }
+        
+        /* Футер */
         .footer {
             text-align: center;
             margin-top: 10px;
-            font-size: 10px;
-            color: rgba(255, 215, 0, 0.3);
-            letter-spacing: 1px;
+            font-size: 9px;
+            color: rgba(255, 215, 0, 0.12);
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
         
-        .emoji-big {
-            font-size: 60px;
+        /* Конфетти для джекпота */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: hidden;
         }
         
-        ::-webkit-scrollbar {
-            width: 4px;
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confettiFall linear forwards;
         }
         
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 215, 0, 0.05);
+        @keyframes confettiFall {
+            0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
         }
         
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 215, 0, 0.3);
-            border-radius: 2px;
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🎰 CASINO</h1>
-    <div class="balance">💰 <span id="balance">1000</span></div>
-    <div class="slots">
-        <div class="slot" id="slot1">🍒</div>
-        <div class="slot" id="slot2">🍋</div>
-        <div class="slot" id="slot3">🍒</div>
-    </div>
-    <div class="bet-control">
-        <label>СТАВКА:</label>
-        <input type="number" id="betAmount" value="10" min="1">
-    </div>
-    <button class="btn-spin" id="spinBtn">🎰 SPIN</button>
-    <div id="result" class="result">Нажми SPIN!</div>
-    <div class="history">
-        <h3>📜 ИСТОРИЯ</h3>
-        <div id="historyList"></div>
-    </div>
-    <button class="btn-close" id="closeBtn">✖ ЗАКРЫТЬ</button>
-    <div class="footer">18+ | ИГРАЙ ОТВЕТСТВЕННО</div>
-</div>
-<script>
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-let balance = 1000;
-const symbols = ['🍒','🍋','🍊','🍇','💎','7️⃣','⭐'];
-const slot1 = document.getElementById('slot1');
-const slot2 = document.getElementById('slot2');
-const slot3 = document.getElementById('slot3');
-const spinBtn = document.getElementById('spinBtn');
-const betInput = document.getElementById('betAmount');
-const resultDiv = document.getElementById('result');
-const balanceSpan = document.getElementById('balance');
-const historyList = document.getElementById('historyList');
-
-// Получаем начальный баланс от бота
-fetch('/get_balance')
-    .then(res => res.json())
-    .then(data => {
-        if (data.balance !== undefined) {
-            balance = data.balance;
-            balanceSpan.textContent = balance;
-        }
-    });
-
-function getRandomSymbol() {
-    return symbols[Math.floor(Math.random() * symbols.length)];
-}
-
-function spinSlots() {
-    const slots = [slot1, slot2, slot3];
-    slots.forEach(s => s.classList.add('spinning'));
-    const results = slots.map(() => getRandomSymbol());
-    
-    setTimeout(() => {
-        slots.forEach((s, i) => {
-            s.textContent = results[i];
-            s.classList.remove('spinning');
-        });
-        checkWin(results);
-    }, 600);
-}
-
-function checkWin(results) {
-    const bet = parseInt(betInput.value) || 0;
-    if (bet <= 0 || bet > balance) {
-        resultDiv.textContent = '❌ НЕВЕРНАЯ СТАВКА!';
-        resultDiv.className = 'result lose';
-        return;
-    }
-    
-    const [r1, r2, r3] = results;
-    let win = 0;
-    let msg = '';
-    let className = 'lose';
-    
-    if (r1 === r2 && r2 === r3) {
-        if (r1 === '💎') {
-            win = bet * 15;
-            msg = '💎💎💎 ДЖЕКПОТ! x15!';
-            className = 'bigwin';
-        } else if (r1 === '7️⃣') {
-            win = bet * 10;
-            msg = '7️⃣7️⃣7️⃣ СЧАСТЛИВЧИК! x10!';
-            className = 'bigwin';
-        } else if (r1 === '⭐') {
-            win = bet * 20;
-            msg = '⭐⭐⭐ СУПЕР ДЖЕКПОТ! x20!';
-            className = 'bigwin';
-        } else {
-            win = bet * 5;
-            msg = `🎉 ТРИ ${r1}! x5!`;
-            className = 'win';
-        }
-    } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-        win = bet * 2;
-        msg = '✨ ПАРА! x2!';
-        className = 'win';
-    } else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
-        win = bet * 1.5;
-        msg = '💎 БРИЛЛИАНТ! x1.5!';
-        className = 'win';
-    } else if (r1 === '⭐' || r2 === '⭐' || r3 === '⭐') {
-        win = bet * 3;
-        msg = '⭐ ЗВЕЗДА! x3!';
-        className = 'win';
-    } else {
-        win = 0;
-        msg = '😔 ПОВЕЗЕТ В СЛЕДУЮЩИЙ РАЗ!';
-        className = 'lose';
-    }
-    
-    const net = win - bet;
-    balance += net;
-    balanceSpan.textContent = balance;
-    resultDiv.textContent = `${msg} ${net > 0 ? '+' : ''}${net}💰`;
-    resultDiv.className = `result ${className}`;
-    
-    // История
-    const item = document.createElement('div');
-    item.className = `history-item ${net >= 0 ? 'win' : 'lose'}`;
-    const sign = net >= 0 ? '+' : '';
-    item.innerHTML = `<span>${results.join(' ')}</span><span>${sign}${net}💰</span>`;
-    historyList.prepend(item);
-    if (historyList.children.length > 10) historyList.removeChild(historyList.lastChild);
-    
-    // Отправка данных в бот
-    fetch('/game_result', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            bet: bet,
-            win: net,
-            symbols: results.join(''),
-            balance: balance
-        })
-    });
-}
-
-spinBtn.addEventListener('click', () => {
-    spinBtn.disabled = true;
-    const bet = parseInt(betInput.value) || 0;
-    if (bet <= 0 || bet > balance) {
-        resultDiv.textContent = '❌ ОШИБКА СТАВКИ!';
-        resultDiv.className = 'result lose';
-        spinBtn.disabled = false;
-        return;
-    }
-    resultDiv.textContent = '🌀 SPIN...';
-    resultDiv.className = 'result';
-    spinSlots();
-    setTimeout(() => spinBtn.disabled = false, 700);
-});
-
-document.getElementById('closeBtn').addEventListener('click', () => tg.close());
-
-// Обновление баланса при открытии
-setInterval(() => {
-    fetch('/get_balance')
-        .then(res => res.json())
-        .then(data => {
-            if (data.balance !== undefined) {
-                balance = data.balance;
-                balanceSpan.textContent = balance;
+        /* Адаптив */
+        @media (max-width: 420px) {
+            .container {
+                padding: 16px 14px 14px;
+                border-radius: 24px;
             }
-        });
-}, 5000);
-</script>
-</body>
-</html>
-"""
-
-@app.route('/')
-def index():
-    return HTML
-
-@app.route('/get_balance')
-def get_balance():
-    from flask import request
-    user_id = request.args.get('user_id')
-    if user_id:
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if user:
-            return jsonify({'balance': user.balance})
-    return jsonify({'balance': 1000})
-
-@app.route('/game_result', methods=['POST'])
-def game_result():
-    data = request.json
-    user_id = data.get('user_id')
-    bet = data.get('bet')
-    win = data.get('win')
-    symbols = data.get('symbols')
-    
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if user:
-            user.balance += win
-            user.games_played += 1
-            if win > 0:
-                user.total_won += win
-            else:
-                user.total_lost += abs(win)
-            db.session.commit()
-            
-            # Сохраняем историю
-            history = GameHistory(
-                user_id=user.id,
-                bet=bet,
-                win=win,
-                symbols=symbols
-            )
-            db.session.add(history)
-            db.session.commit()
-    
-    return jsonify({'status': 'ok'})
-
-# ========== КОМАНДЫ БОТА ==========
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    user_id = str(message.from_user.id)
-    
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if not user:
-            user = User(
-                telegram_id=user_id,
-                username=message.from_user.username,
-                first_name=message.from_user.first_name,
-                last_name=message.from_user.last_name
-            )
-            db.session.add(user)
-            db.session.commit()
-    
-    markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")))
-    markup.row(
-        InlineKeyboardButton("💰 Баланс", callback_data="balance"),
-        InlineKeyboardButton("📊 Статистика", callback_data="stats")
-    )
-    if user.is_admin:
-        markup.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin"))
-    
-    bot.send_message(
-        message.chat.id,
-        f"🎲 Добро пожаловать в Casino Royale, {message.from_user.first_name}!\n\n"
-        f"💰 Ваш баланс: {user.balance}\n"
-        f"🎮 Игр сыграно: {user.games_played}\n\n"
-        "Нажми «Играть» чтобы начать!",
-        reply_markup=markup
-    )
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback(call):
-    user_id = str(call.from_user.id)
-    
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if not user:
-            bot.answer_callback_query(call.id, "Ошибка! Напишите /start")
-            return
+            .slot {
+                width: 65px;
+                height: 65px;
+                font-size: 36px;
+            }
+            .balance-value {
+                font-size: 22px;
+            }
+            .btn-spin {
+                font-size: 17px;
+                padding: 14px 20px;
+            }
+            .logo-text {
+                font-size: 15px;
+            }
+        }
         
-        if call.data == "balance":
-            bot.answer_callback_query(
-                call.id,
-                f"💰 Ваш баланс: {user.balance}\n"
-                f"🏆 Всего выиграно: {user.total_won}\n"
-                f"💔 Всего проиграно: {user.total_lost}\n"
-                f"🎮 Игр: {user.games_played}",
-                show_alert=True
-            )
-        
-        elif call.data == "stats":
-            bot.answer_callback_query(
-                call.id,
-                f"📊 Статистика:\n"
-                f"🎮 Игр: {user.games_played}\n"
-                f"🏆 Выигрышей: {user.total_won}\n"
-                f"💔 Проигрышей: {user.total_lost}\n"
-                f"💰 Баланс: {user.balance}",
-                show_alert=True
-            )
-        
-        elif call.data == "admin" and user.is_admin:
-            show_admin_panel(call.message, user)
-        
-        elif call.data.startswith("admin_"):
-            handle_admin_action(call, user)
-
-def show_admin_panel(message, admin):
-    markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("➕ Выдать валюту", callback_data="admin_give"),
-        InlineKeyboardButton("➖ Забрать валюту", callback_data="admin_take")
-    )
-    markup.row(
-        InlineKeyboardButton("👤 Информация о пользователе", callback_data="admin_info"),
-        InlineKeyboardButton("📊 Топ игроков", callback_data="admin_top")
-    )
-    markup.row(
-        InlineKeyboardButton("📋 История транзакций", callback_data="admin_history"),
-        InlineKeyboardButton("🔙 Назад", callback_data="back")
-    )
-    
-    bot.send_message(
-        message.chat.id,
-        "👑 **Админ-панель**\n\n"
-        "Выберите действие:",
-        reply_markup=markup,
-        parse_mode='Markdown'
-    )
-
-def handle_admin_action(call, admin):
-    # Простая обработка админских команд
-    if call.data == "admin_give":
-        bot.send_message(call.message.chat.id, "Введите ID пользователя и сумму через пробел:\n`123456789 100`", parse_mode='Markdown')
-        bot.register_next_step_handler(call.message, admin_give_currency, admin)
-    
-    elif call.data == "admin_take":
-        bot.send_message(call.message.chat.id, "Введите ID пользователя и сумму через пробел:\n`123456789 50`", parse_mode='Markdown')
-        bot.register_next_step_handler(call.message, admin_take_currency, admin)
-    
-    elif call.data == "admin_info":
-        bot.send_message(call.message.chat.id, "Введите ID пользователя:")
-        bot.register_next_step_handler(call.message, admin_get_user_info)
-    
-    elif call.data == "admin_top":
-        show_top_players(call.message)
-    
-    elif call.data == "back":
-        start(call.message)
-
-def admin_give_currency(message, admin):
-    try:
-        parts = message.text.split()
-        user_id = parts[0]
-        amount = int(parts[1])
-        
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
-            if user:
-                user.balance += amount
-                transaction = Transaction(
-                    user_id=user.id,
-                    amount=amount,
-                    type='admin',
-                    description=f'Выдано админом {amount}'
-                )
-                db.session.add(transaction)
-                db.session.commit()
-                bot.send_message(message.chat.id, f"✅ Выдано {amount} пользователю {user.first_name}")
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Ошибка! Формат: `ID СУММА`", parse_mode='Markdown')
-
-def admin_take_currency(message, admin):
-    try:
-        parts = message.text.split()
-        user_id = parts[0]
-        amount = int(parts[1])
-        
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
-            if user:
-                if user.balance >= amount:
-                    user.balance -= amount
-                    transaction = Transaction(
-                        user_id=user.id,
-                        amount=-amount,
-                        type='admin',
-                        description=f'Забрано админом {amount}'
-                    )
-                    db.session.add(transaction)
-                    db.session.commit()
-                    bot.send_message(message.chat.id, f"✅ Забрано {amount} у пользователя {user.first_name}")
-                else:
-                    bot.send_message(message.chat.id, "❌ Недостаточно средств")
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Ошибка! Формат: `ID СУММА`", parse_mode='Markdown')
-
-def admin_get_user_info(message):
-    try:
-        user_id = message.text.strip()
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=user_id).first()
-            if user:
-                bot.send_message(
-                    message.chat.id,
-                    f"👤 **Информация о пользователе**\n\n"
-                    f"ID: `{user.telegram_id}`\n"
-                    f"Имя: {user.first_name}\n"
-                    f"Юзернейм: @{user.username or 'Нет'}\n"
-                    f"💰 Баланс: {user.balance}\n"
-                    f"🎮 Игр: {user.games_played}\n"
-                    f"🏆 Выиграно: {user.total_won}\n"
-                    f"💔 Проиграно: {user.total_lost}",
-                    parse_mode='Markdown'
-                )
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Ошибка!")
-
-def show_top_players(message):
-    with app.app_context():
-        top = User.query.order_by(User.balance.desc()).limit(10).all()
-        text = "🏆 **Топ игроков**\n\n"
-        for i, user in enumerate(top, 1):
-            text += f"{i}. {user.first_name} — {user.balance}💰\n"
-        bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
-@bot.message_handler(commands=['balance'])
-def balance_command(message):
-    user_id = str(message.from_user.id)
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if user:
-            bot.send_message(
-                message.chat.id,
-                f"💰 Ваш баланс: {user.balance}\n"
-                f"🏆 Всего выиграно: {user.total_won}\n"
-                f"💔 Всего проиграно: {user.total_lost}\n"
-                f"🎮 Игр сыграно: {user.games_played}"
-            )
-
-@bot.message_handler(commands=['admin'])
-def admin_command(message):
-    user_id = str(message.from_user.id)
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if user and user.is_admin:
-            show_admin_panel(message, user)
-        else:
-            bot.send_message(message.chat.id, "❌ У вас нет прав администратора!")
-
-# ========== ЗАПУСК ==========
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Запускаем бота в отдельном потоке
-    def run_bot():
-        bot.polling(non_stop=True)
-    
-    threading.Thread(target=run_bot, daemon=True).start()
-    
-    # Запускаем Flask
-    app.run(host='0.0.0.0', port=port)import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from flask import Flask
-import threading
-import os
-
-# ========== КОНФИГ ==========
-BOT_TOKEN = '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3hPqWkXs'
-WEBAPP_URL = 'https://casino-bot-mw0h.onrender.com/'
-
-# ========== БОТ ==========
-bot = telebot.TeleBot(BOT_TOKEN)
-
-# ========== ВЕБ-СЕРВЕР ==========
-app = Flask(__name__)
-
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Casino</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:Arial;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;display:flex;justify-content:center;align-items:center;padding:10px}
-        .container{background:rgba(255,255,255,0.95);border-radius:20px;padding:20px;max-width:400px;width:100%}
-        h1{text-align:center;color:#333;margin-bottom:15px}
-        .balance{background:#f0f0f0;padding:12px;border-radius:10px;text-align:center;font-size:20px;font-weight:bold;margin-bottom:15px}
-        .slots{display:flex;justify-content:space-around;margin:15px 0}
-        .slot{width:70px;height:70px;background:white;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
-        .slot.spinning{animation:spin 0.5s}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .btn-spin{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:15px;font-size:20px;border-radius:10px;cursor:pointer;width:100%;margin:10px 0}
-        .btn-spin:disabled{opacity:0.6}
-        .bet-control{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0}
-        .bet-control input{padding:8px;border:2px solid #ddd;border-radius:8px;width:100px;text-align:center}
-        .result{text-align:center;font-size:18px;font-weight:bold;min-height:30px;margin:10px 0}
-        .result.win{color:#28a745}
-        .result.lose{color:#dc3545}
-        .history{margin-top:15px;padding-top:15px;border-top:2px solid #eee}
-        #historyList{max-height:150px;overflow-y:auto}
-        .history-item{padding:5px 10px;margin:5px 0;background:#f8f9fa;border-radius:5px;display:flex;justify-content:space-between}
-        .btn-close{width:100%;padding:12px;background:#dc3545;color:#fff;border:none;border-radius:10px;font-size:16px;cursor:pointer;margin-top:10px}
+        @media (max-width: 360px) {
+            .slot {
+                width: 55px;
+                height: 55px;
+                font-size: 30px;
+            }
+            .bet-input {
+                width: 55px;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🎰 Casino</h1>
-    <div class="balance">💰 <span id="balance">1000</span></div>
-    <div class="slots">
-        <div class="slot" id="slot1">🍒</div>
-        <div class="slot" id="slot2">🍋</div>
-        <div class="slot" id="slot3">🍒</div>
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon">🎰</span>
+            <span class="logo-text">CASINO</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="status-dot"></span>
+            <span style="color:rgba(255,255,255,0.15);font-size:9px;letter-spacing:1px;">LIVE</span>
+        </div>
     </div>
-    <div class="bet-control">
-        <label>Ставка:</label>
-        <input type="number" id="betAmount" value="10" min="1">
+    
+    <div class="balance-card">
+        <span class="balance-label">💰 Баланс</span>
+        <span class="balance-value" id="balance">1000 <span class="currency">₽</span></span>
     </div>
-    <button class="btn-spin" id="spinBtn">🎰 КРУТИТЬ</button>
-    <div id="result" class="result"></div>
-    <div class="history">
-        <h3>История:</h3>
+    
+    <div class="slots-container">
+        <div class="slots">
+            <div class="slot-wrapper"><div class="slot" id="slot1">🍒</div></div>
+            <div class="slot-wrapper"><div class="slot" id="slot2">🍋</div></div>
+            <div class="slot-wrapper"><div class="slot" id="slot3">🍒</div></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <div class="bet-control">
+            <label>Ставка</label>
+            <div class="bet-input-group">
+                <button class="bet-btn" id="betHalf">½</button>
+                <input type="number" class="bet-input" id="betAmount" value="10" min="1" max="10000">
+                <button class="bet-btn" id="betDouble">2×</button>
+            </div>
+        </div>
+        <button class="btn-spin" id="spinBtn">🎰 SPIN</button>
+    </div>
+    
+    <div id="result" class="result">🎲 Нажми SPIN чтобы начать</div>
+    
+    <div class="history-section">
+        <div class="history-header">
+            <h3>📜 История</h3>
+            <span id="historyCount">0</span>
+        </div>
         <div id="historyList"></div>
     </div>
+    
     <button class="btn-close" id="closeBtn">✖ Закрыть</button>
+    <div class="footer">18+ · Играй ответственно · Только развлечение</div>
 </div>
+
 <script>
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
 const tg = window.Telegram.WebApp;
 tg.expand();
+
+// ========== ПЕРЕМЕННЫЕ ==========
 let balance = 1000;
-const symbols = ['🍒','🍋','🍊','🍇','💎','7️⃣'];
+let isSpinning = false;
+const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '⭐', '🎰'];
+
+// ========== DOM ЭЛЕМЕНТЫ ==========
 const slot1 = document.getElementById('slot1');
 const slot2 = document.getElementById('slot2');
 const slot3 = document.getElementById('slot3');
 const spinBtn = document.getElementById('spinBtn');
 const betInput = document.getElementById('betAmount');
+const betHalf = document.getElementById('betHalf');
+const betDouble = document.getElementById('betDouble');
 const resultDiv = document.getElementById('result');
 const balanceSpan = document.getElementById('balance');
 const historyList = document.getElementById('historyList');
+const historyCount = document.getElementById('historyCount');
 
+// ========== ФУНКЦИИ ==========
 function getRandomSymbol() {
     return symbols[Math.floor(Math.random() * symbols.length)];
 }
 
-function spinSlots() {
-    const slots = [slot1, slot2, slot3];
-    slots.forEach(s => s.classList.add('spinning'));
-    const results = slots.map(() => getRandomSymbol());
-    setTimeout(() => {
-        slots.forEach((s, i) => {
-            s.textContent = results[i];
-            s.classList.remove('spinning');
-        });
-        checkWin(results);
-    }, 500);
+function getUserId() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('user_id') || '';
 }
 
-function checkWin(results) {
+function updateBalance(newBalance) {
+    balance = newBalance;
+    balanceSpan.textContent = balance + ' ₽';
+}
+
+function addHistoryItem(symbols, amount) {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const sign = amount >= 0 ? '+' : '';
+    const className = amount >= 0 ? 'positive' : 'negative';
+    item.innerHTML = `
+        <span class="symbols">${symbols}</span>
+        <span class="amount ${className}">${sign}${amount} ₽</span>
+    `;
+    historyList.prepend(item);
+    
+    // Ограничиваем историю 20 записями
+    while (historyList.children.length > 20) {
+        historyList.removeChild(historyList.lastChild);
+    }
+    historyCount.textContent = historyList.children.length;
+}
+
+function showConfetti() {
+    const colors = ['#ffd700', '#ff2d55', '#00d4ff', '#00ff88', '#ff6b00', '#a855f7'];
+    const container = document.createElement('div');
+    container.className = 'confetti-container';
+    document.body.appendChild(container);
+    
+    for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.width = (Math.random() * 8 + 4) + 'px';
+        confetti.style.height = (Math.random() * 8 + 4) + 'px';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        confetti.style.animationDelay = (Math.random() * 1.5) + 's';
+        container.appendChild(confetti);
+    }
+    
+    setTimeout(() => {
+        container.remove();
+    }, 4000);
+}
+
+function spinSlots() {
+    if (isSpinning) return;
+    
     const bet = parseInt(betInput.value) || 0;
     if (bet <= 0 || bet > balance) {
         resultDiv.textContent = '❌ Неверная ставка!';
         resultDiv.className = 'result lose';
         return;
     }
-    const [r1, r2, r3] = results;
-    let win = 0;
-    let msg = '';
-    if (r1 === r2 && r2 === r3) {
-        win = r1 === '💎' ? bet * 10 : r1 === '7️⃣' ? bet * 5 : bet * 3;
-        msg = '🎉 ТРИ! x' + (win/bet) + '!';
-    } else if (r1 === r2 || r2 === r3 || r1 === r3) {
-        win = bet * 2;
-        msg = '✨ ПАРА! x2!';
-    } else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
-        win = bet * 1.5;
-        msg = '💎 БРИЛЛИАНТ! x1.5!';
-    } else {
-        win = 0;
-        msg = '😔 Повезет в следующий раз!';
-    }
-    const net = win - bet;
-    balance += net;
-    balanceSpan.textContent = balance;
-    resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + '💰';
-    resultDiv.className = 'result ' + (net > 0 ? 'win' : 'lose');
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    item.innerHTML = '<span>' + results.join(' ') + '</span><span style="color:' + (net>=0?'#28a745':'#dc3545') + '">' + (net>=0?'+':'') + net + '💰</span>';
-    historyList.prepend(item);
-    if (historyList.children.length > 10) historyList.removeChild(historyList.lastChild);
-    tg.sendData(JSON.stringify({balance, win: net, symbols: results}));
+    
+    isSpinning = true;
+    spinBtn.disabled = true;
+    resultDiv.textContent = '🌀 SPIN...';
+    resultDiv.className = 'result';
+    
+    const slots = [slot1, slot2, slot3];
+    slots.forEach(s => s.classList.add('spinning'));
+    
+    const results = slots.map(() => getRandomSymbol());
+    
+    setTimeout(() => {
+        slots.forEach((s, i) => {
+            s.textContent = results[i];
+            s.classList.remove('spinning');
+        });
+        
+        // Проверка выигрыша
+        const [r1, r2, r3] = results;
+        let win = 0;
+        let msg = '';
+        let className = 'lose';
+        let isBigWin = false;
+        
+        if (r1 === r2 && r2 === r3) {
+            if (r1 === '💎') {
+                win = bet * 15;
+                msg = '💎💎💎 ДЖЕКПОТ! x15!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else if (r1 === '7️⃣') {
+                win = bet * 10;
+                msg = '7️⃣7️⃣7️⃣ СЧАСТЛИВЧИК! x10!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else if (r1 === '⭐') {
+                win = bet * 20;
+                msg = '⭐⭐⭐ СУПЕР ДЖЕКПОТ! x20!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else if (r1 === '🎰') {
+                win = bet * 30;
+                msg = '🎰🎰🎰 МЕГА ДЖЕКПОТ! x30!';
+                className = 'bigwin';
+                isBigWin = true;
+            } else {
+                win = bet * 5;
+                msg = '🎉 ТРИ ' + r1 + '! x5!';
+                className = 'win';
+            }
+        } else if (r1 === r2 || r2 === r3 || r1 === r3) {
+            win = bet * 2;
+            msg = '✨ ПАРА! x2!';
+            className = 'win';
+        } else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
+            win = bet * 1.5;
+            msg = '💎 БРИЛЛИАНТ! x1.5!';
+            className = 'win';
+        } else if (r1 === '⭐' || r2 === '⭐' || r3 === '⭐') {
+            win = bet * 3;
+            msg = '⭐ ЗВЕЗДА! x3!';
+            className = 'win';
+        } else if (r1 === '🎰' || r2 === '🎰' || r3 === '🎰') {
+            win = bet * 5;
+            msg = '🎰 СЛОТ! x5!';
+            className = 'win';
+        } else {
+            win = 0;
+            msg = '😔 Повезет в следующий раз!';
+            className = 'lose';
+        }
+        
+        const net = win - bet;
+        balance += net;
+        updateBalance(balance);
+        
+        // Подсветка выигрышных слотов
+        if (net > 0) {
+            slots.forEach(s => s.classList.add('win-highlight'));
+            setTimeout(() => {
+                slots.forEach(s => s.classList.remove('win-highlight'));
+            }, 800);
+        }
+        
+        // Конфетти для больших выигрышей
+        if (isBigWin) {
+            showConfetti();
+        }
+        
+        // Результат
+        const sign = net > 0 ? '+' : '';
+        resultDiv.textContent = msg + ' ' + sign + net + ' ₽';
+        resultDiv.className = 'result ' + className;
+        
+        // История
+        addHistoryItem(results.join(' '), net);
+        
+        // Отправка на сервер
+        const userId = getUserId();
+        if (userId) {
+            fetch('/game_result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    bet: bet,
+                    win: net,
+                    symbols: results.join('')
+                })
+            });
+        }
+        
+        isSpinning = false;
+        spinBtn.disabled = false;
+    }, 700);
 }
 
-spinBtn.addEventListener('click', () => {
-    spinBtn.disabled = true;
-    const bet = parseInt(betInput.value) || 0;
-    if (bet <= 0 || bet > balance) {
-        resultDiv.textContent = '❌ Ошибка ставки!';
-        resultDiv.className = 'result lose';
-        spinBtn.disabled = false;
-        return;
+// ========== ЗАГРУЗКА БАЛАНСА ==========
+function loadBalance() {
+    const userId = getUserId();
+    if (userId) {
+        fetch('/get_balance?user_id=' + userId)
+            .then(res => res.json())
+            .then(data => {
+                if (data.balance !== undefined) {
+                    updateBalance(data.balance);
+                }
+            })
+            .catch(() => {});
     }
-    resultDiv.textContent = '🌀 Вращение...';
-    resultDiv.className = 'result';
-    spinSlots();
-    setTimeout(() => spinBtn.disabled = false, 600);
+}
+
+// ========== ОБНОВЛЕНИЕ БАЛАНСА ПЕРИОДИЧЕСКИ ==========
+setInterval(loadBalance, 10000);
+
+// ========== СОБЫТИЯ ==========
+spinBtn.addEventListener('click', spinSlots);
+
+betHalf.addEventListener('click', () => {
+    let val = parseInt(betInput.value) || 10;
+    val = Math.floor(val / 2);
+    if (val < 1) val = 1;
+    betInput.value = val;
 });
 
-document.getElementById('closeBtn').addEventListener('click', () => tg.close());
-</script>
-</body>
-</html>
-"""
-
-@app.route('/')
-def index():
-    return HTML
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=WEBAPP_URL)))
-    bot.send_message(message.chat.id, "🎲 Добро пожаловать в Casino!\n\nНажмите «Играть» для старта.", reply_markup=markup)
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
-    app.run(host='0.0.0.0', port=port)
+betDouble.addEventListener('click', () => {
+    let val = parseInt(betInput.value) || 10;
+    val = Math.min(val * 2, balance);
+   
