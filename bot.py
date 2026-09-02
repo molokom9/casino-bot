@@ -606,10 +606,8 @@ function spinSlots() {
     const slots = [s1, s2, s3];
     slots.forEach(s => s.classList.add('spinning'));
     
-    // Генерируем результаты
     const results = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
     
-    // Медленная остановка
     const totalDuration = 2500;
     const startTime = Date.now();
     
@@ -617,16 +615,11 @@ function spinSlots() {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / totalDuration, 1);
         
-        // Плавное замедление
-        const easeOut = 1 - Math.pow(1 - progress, 3);
-        
         slots.forEach((s, i) => {
             if (progress < 0.85) {
-                // Быстрое вращение
                 const randomIndex = Math.floor(Math.random() * symbols.length);
                 s.textContent = symbols[randomIndex];
             } else {
-                // Медленная остановка к финальному результату
                 const stopProgress = (progress - 0.85) / 0.15;
                 if (stopProgress > 0.5) {
                     s.textContent = results[i];
@@ -637,7 +630,6 @@ function spinSlots() {
         if (progress < 1) {
             requestAnimationFrame(updateSlots);
         } else {
-            // Финал
             slots.forEach((s, i) => {
                 s.textContent = results[i];
                 s.classList.remove('spinning');
@@ -658,7 +650,6 @@ function checkWin(results) {
     let className = 'lose';
     let isBigWin = false;
     
-    // Проверка на виноград 🍉
     if (r1 === '🍉' || r2 === '🍉' || r3 === '🍉') {
         const grapeCount = results.filter(r => r === '🍉').length;
         if (grapeCount === 3) {
@@ -676,7 +667,6 @@ function checkWin(results) {
             className = 'win';
         }
     }
-    // Джекпоты
     else if (r1 === r2 && r2 === r3) {
         if (r1 === '💎') {
             win = bet * 15;
@@ -695,23 +685,20 @@ function checkWin(results) {
             isBigWin = true;
         } else {
             win = bet * 5;
-            msg = `🎉 ТРИ ${r1}! x5!`;
+            msg = '🎉 ТРИ ' + r1 + '! x5!';
             className = 'win';
         }
     }
-    // Пара
     else if (r1 === r2 || r2 === r3 || r1 === r3) {
         win = bet * 2;
         msg = '✨ ПАРА! x2!';
         className = 'win';
     }
-    // Бриллиант
     else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
         win = bet * 1.5;
         msg = '💎 БРИЛЛИАНТ! x1.5!';
         className = 'win';
     }
-    // Звезда
     else if (r1 === '⭐' || r2 === '⭐' || r3 === '⭐') {
         win = bet * 2;
         msg = '⭐ ЗВЕЗДА! x2!';
@@ -727,7 +714,6 @@ function checkWin(results) {
     balance += net;
     updateBalance(balance);
     
-    // Подсветка победных слотов
     if (net > 0) {
         const slots = [s1, s2, s3];
         slots.forEach(s => s.classList.add('win'));
@@ -736,12 +722,11 @@ function checkWin(results) {
         }, 800);
     }
     
-    resultDiv.textContent = `${msg} ${net > 0 ? '+' : ''}${net} ₽`;
-    resultDiv.className = `result ${className}`;
+    resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + ' ₽';
+    resultDiv.className = 'result ' + className;
     
     addHistory(results.join(' '), net);
     
-    // Отправка на сервер
     const userId = getUserId();
     if (userId) {
         fetch('/game_result', {
@@ -774,7 +759,6 @@ function loadBalance() {
     }
 }
 
-// Периодическое обновление баланса
 setInterval(loadBalance, 10000);
 
 spinBtn.addEventListener('click', spinSlots);
@@ -1027,4 +1011,44 @@ def admin_get_user_info(message):
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
     except:
-        bot.send_message(message.chat.id, "❌ О
+        bot.send_message(message.chat.id, "❌ Ошибка!")
+
+def show_top_players(message):
+    with app.app_context():
+        top = User.query.order_by(User.balance.desc()).limit(10).all()
+        text = "🏆 **Топ игроков**\n\n"
+        for i, user in enumerate(top, 1):
+            text += f"{i}. {user.first_name} — {user.balance} ₽\n"
+        bot.send_message(message.chat.id, text, parse_mode='Markdown')
+
+@bot.message_handler(commands=['balance'])
+def balance_command(message):
+    user_id = str(message.from_user.id)
+    with app.app_context():
+        user = User.query.filter_by(telegram_id=user_id).first()
+        if user:
+            bot.send_message(
+                message.chat.id,
+                f"💰 Баланс: {user.balance} ₽\n"
+                f"🏆 Выиграно: {user.total_won} ₽\n"
+                f"💔 Проиграно: {user.total_lost} ₽\n"
+                f"🎮 Игр: {user.games_played}"
+            )
+        else:
+            bot.send_message(message.chat.id, "❌ Пользователь не найден. Напишите /start")
+
+@bot.message_handler(commands=['admin'])
+def admin_command(message):
+    user_id = str(message.from_user.id)
+    with app.app_context():
+        user = User.query.filter_by(telegram_id=user_id).first()
+        if user and user.is_admin:
+            show_admin_panel(message, user)
+        else:
+            bot.send_message(message.chat.id, "❌ Нет прав!")
+
+# ========== ЗАПУСК ==========
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
+    app.run(host='0.0.0.0', port=port)
