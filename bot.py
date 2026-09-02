@@ -500,12 +500,12 @@ function updateBalance(val) {
 }
 
 function getWinChance(bet) {
-    // Маленькие ставки — выше шанс, большие — ниже
-    if (bet <= 50) return 0.19;
-    if (bet <= 100) return 0.16;
-    if (bet <= 200) return 0.13;
-    if (bet <= 400) return 0.10;
-    return 0.08;
+    // Чуть выше шансы, особенно на маленьких ставках
+    if (bet <= 50) return 0.23;
+    if (bet <= 100) return 0.19;
+    if (bet <= 200) return 0.15;
+    if (bet <= 400) return 0.11;
+    return 0.09;
 }
 
 function spinSlots() {
@@ -529,7 +529,7 @@ function spinSlots() {
     resultDiv.textContent = 'Крутим...';
     resultDiv.className = 'result';
 
-    // Сразу списываем ставку (чтобы не ушло в минус)
+    // Сразу списываем ставку
     balance -= bet;
     updateBalance(balance);
 
@@ -538,15 +538,13 @@ function spinSlots() {
     const final = [];
     let finished = 0;
 
-    // Генерируем финальные символы с учётом шанса
     const chance = getWinChance(bet);
     const willWin = Math.random() < chance;
 
     if (willWin) {
-        // Формируем выигрышную комбинацию
         const roll = Math.random();
-        if (roll < 0.12) {
-            // Тройка (редкая)
+        if (roll < 0.10) {
+            // Тройка (очень редко)
             const sym = symbols[Math.floor(Math.random() * symbols.length)];
             final.push(sym, sym, sym);
         } else if (roll < 0.55) {
@@ -560,14 +558,14 @@ function spinSlots() {
             else if (pos === 1) { final[1] = final[2] = sym; }
             else { final[0] = final[2] = sym; }
         } else {
-            // Один алмаз
+            // Один 💎
             final[0] = symbols[Math.floor(Math.random() * symbols.length)];
             final[1] = symbols[Math.floor(Math.random() * symbols.length)];
             final[2] = symbols[Math.floor(Math.random() * symbols.length)];
             final[Math.floor(Math.random() * 3)] = '💎';
         }
     } else {
-        // Проигрыш — почти всегда разные
+        // Проигрыш
         do {
             final[0] = symbols[Math.floor(Math.random() * symbols.length)];
             final[1] = symbols[Math.floor(Math.random() * symbols.length)];
@@ -575,7 +573,7 @@ function spinSlots() {
         } while (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]);
     }
 
-    // Анимация: быстрый старт → поочерёдная остановка
+    // Анимация
     slots.forEach((slot, i) => {
         boxes[i].classList.add('active');
         slot.classList.add('spinning');
@@ -586,7 +584,6 @@ function spinSlots() {
             }
         }, 55);
 
-        // Остановка: 1-й через 900мс, 2-й через 1400мс, 3-й через 1900мс
         const stopDelay = 900 + i * 500;
 
         setTimeout(() => {
@@ -614,19 +611,28 @@ function checkWin(results, bet) {
     let cls = 'lose';
 
     if (a === b && b === c) {
-        if (a === '💎') { winAmount = bet * 10; msg = '💎 ДЖЕКПОТ ×10'; cls = 'bigwin'; }
-        else if (a === '7️⃣') { winAmount = bet * 8; msg = '7️⃣ СЧАСТЛИВЧИК ×8'; cls = 'bigwin'; }
-        else if (a === '⭐') { winAmount = bet * 12; msg = '⭐ СУПЕР ×12'; cls = 'bigwin'; }
-        else { winAmount = bet * 4; msg = 'Три в ряд ×4'; cls = 'win'; }
+        if (a === '💎' || a === '⭐') {
+            winAmount = Math.floor(bet * 4);
+            msg = a === '💎' ? '💎 ДЖЕКПОТ ×4' : '⭐ СУПЕР ×4';
+            cls = 'bigwin';
+        } else if (a === '7️⃣') {
+            winAmount = Math.floor(bet * 3);
+            msg = '7️⃣ СЧАСТЛИВЧИК ×3';
+            cls = 'bigwin';
+        } else {
+            winAmount = Math.floor(bet * 2.5);
+            msg = 'Три в ряд ×2.5';
+            cls = 'win';
+        }
     }
     else if (a === b || b === c || a === c) {
-        winAmount = Math.floor(bet * 1.6);
-        msg = 'Пара ×1.6';
+        winAmount = Math.floor(bet * 1.3);
+        msg = 'Пара ×1.3';
         cls = 'win';
     }
     else if ([a,b,c].includes('💎')) {
-        winAmount = Math.floor(bet * 1.4);
-        msg = '💎 Бриллиант ×1.4';
+        winAmount = Math.floor(bet * 1.2);
+        msg = '💎 Бриллиант ×1.2';
         cls = 'win';
     }
     else {
@@ -634,7 +640,7 @@ function checkWin(results, bet) {
         cls = 'lose';
     }
 
-    // Добавляем выигрыш (ставка уже списана)
+    // Добавляем выигрыш
     balance += winAmount;
     updateBalance(balance);
 
@@ -643,11 +649,9 @@ function checkWin(results, bet) {
         setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 650);
     }
 
-    const net = winAmount - bet;
     resultDiv.textContent = msg + (winAmount > 0 ? ` +${winAmount} ₴` : '');
     resultDiv.className = 'result ' + cls;
 
-    // Отправляем на сервер (net = winAmount - bet)
     const uid = getUserId();
     if (uid) {
         fetch('/game_result', {
@@ -656,7 +660,7 @@ function checkWin(results, bet) {
             body: JSON.stringify({
                 user_id: uid,
                 bet: bet,
-                win: net,
+                win: winAmount - bet,   // net
                 symbols: results.join('')
             })
         }).catch(()=>{});
@@ -721,7 +725,7 @@ def game_result():
     data = request.json or {}
     user_id = str(data.get('user_id', ''))
     bet = int(data.get('bet', 0))
-    win = int(data.get('win', 0))  # уже net (win - bet)
+    win = int(data.get('win', 0))  # net
     symbols = data.get('symbols', '')
 
     with app.app_context():
