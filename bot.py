@@ -6,7 +6,7 @@ import os
 
 # ========== КОНФИГ ==========
 BOT_TOKEN = '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3hPqWkXs'
-WEBAPP_URL = 'https://your-app.onrender.com'
+WEBAPP_URL = 'https://casino-bot-mw0h.onrender.com/'
 
 # ========== БОТ ==========
 bot = telebot.TeleBot(BOT_TOKEN)
