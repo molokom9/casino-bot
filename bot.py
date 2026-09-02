@@ -59,7 +59,7 @@ with app.app_context():
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-# ========== HTML (новый премиальный дизайн) ==========
+# ========== HTML ==========
 HTML = '''<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -79,42 +79,41 @@ HTML = '''<!DOCTYPE html>
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0c0c12;
+    background: #08080d;
     min-height: 100vh;
     color: #fff;
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: 12px;
+    padding: 10px;
 }
 
 .container {
     width: 100%;
-    max-width: 380px;
-    background: linear-gradient(180deg, #14141e 0%, #0f0f16 100%);
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.06);
+    max-width: 390px;
+    background: linear-gradient(165deg, #12121c 0%, #0b0b12 100%);
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.07);
     overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+    box-shadow: 0 30px 60px -15px rgba(0,0,0,0.85);
 }
 
 .header {
-    padding: 18px 20px 14px;
+    padding: 16px 18px 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
 }
 
 .logo {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
-    letter-spacing: 0.5px;
-    color: #fff;
+    letter-spacing: 0.6px;
 }
 
 .logo span {
-    background: linear-gradient(90deg, #f6d365, #fda085);
+    background: linear-gradient(90deg, #fcd34d, #f59e0b);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -122,190 +121,204 @@ body {
 .live {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
+    gap: 5px;
+    font-size: 10px;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.1px;
 }
 
 .live-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     background: #22c55e;
     border-radius: 50%;
-    box-shadow: 0 0 8px #22c55e;
-    animation: pulse 1.8s infinite;
+    box-shadow: 0 0 10px #22c55e;
+    animation: pulse 1.6s infinite;
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.85); }
 }
 
 .balance-section {
-    padding: 18px 20px 12px;
+    padding: 16px 16px 8px;
 }
 
 .balance-card {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 14px;
-    padding: 16px 18px;
+    padding: 14px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .balance-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #9ca3af;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.9px;
 }
 
 .balance-value {
-    font-size: 26px;
+    font-size: 24px;
     font-weight: 800;
     color: #fbbf24;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.4px;
 }
 
 .balance-value small {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #9ca3af;
-    margin-left: 2px;
 }
 
 .refill-btn {
     display: block;
-    margin: 12px 20px 0;
-    padding: 13px;
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    margin: 10px 16px 0;
+    padding: 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
     color: #fff;
     text-align: center;
     text-decoration: none;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    border-radius: 12px;
+    border-radius: 11px;
     letter-spacing: 0.3px;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition: all 0.15s;
+    box-shadow: 0 4px 15px rgba(59,130,246,0.25);
 }
 
 .refill-btn:active {
     transform: scale(0.98);
+    box-shadow: none;
 }
 
 .slots-wrap {
-    margin: 18px 16px;
-    background: #0a0a10;
+    margin: 14px 12px;
+    background: #07070c;
     border-radius: 16px;
-    padding: 22px 14px;
+    padding: 20px 12px;
     border: 1px solid rgba(255,255,255,0.04);
+    position: relative;
 }
 
 .slots {
     display: flex;
     justify-content: center;
-    gap: 10px;
+    gap: 9px;
 }
 
 .slot-box {
     flex: 1;
-    max-width: 88px;
-    background: #111118;
-    border-radius: 12px;
-    padding: 6px;
+    max-width: 92px;
+    background: #101018;
+    border-radius: 13px;
+    padding: 5px;
     border: 1px solid rgba(255,255,255,0.05);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.slot-box.active {
+    border-color: rgba(251,191,36,0.35);
+    box-shadow: 0 0 18px rgba(251,191,36,0.12);
 }
 
 .slot {
     width: 100%;
     aspect-ratio: 1;
-    background: #0d0d14;
-    border-radius: 9px;
+    background: #0c0c14;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 40px;
-    transition: all 0.25s;
+    font-size: 42px;
+    transition: transform 0.15s;
+    will-change: transform;
 }
 
 .slot.spinning {
-    animation: spin 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: slotBlur 0.08s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: scale(1) rotateX(0); }
-    30% { transform: scale(1.08) rotateX(180deg); }
-    60% { transform: scale(1) rotateX(360deg); }
-    100% { transform: scale(1) rotateX(720deg); }
+@keyframes slotBlur {
+    0% { transform: translateY(-2px); filter: blur(0.5px); }
+    50% { transform: translateY(2px); filter: blur(1px); }
+    100% { transform: translateY(-2px); filter: blur(0.5px); }
 }
 
 .slot.win {
-    box-shadow: 0 0 0 2px #fbbf24, 0 0 20px rgba(251,191,36,0.25);
+    animation: winPulse 0.6s ease;
+}
+
+@keyframes winPulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.12); }
+    100% { transform: scale(1); }
 }
 
 .controls {
-    padding: 0 20px 8px;
+    padding: 0 16px 6px;
 }
 
 .bet-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.06);
     border-radius: 12px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
+    padding: 9px 12px;
+    margin-bottom: 11px;
 }
 
 .bet-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #9ca3af;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.7px;
 }
 
 .bet-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
 }
 
 .bet-btn {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border: none;
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.07);
     color: #fff;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
-    border-radius: 9px;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s;
+    transition: background 0.12s;
 }
 
 .bet-btn:active {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.14);
 }
 
 .bet-input {
-    width: 68px;
-    height: 34px;
-    background: #0a0a10;
+    width: 64px;
+    height: 32px;
+    background: #08080e;
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 9px;
+    border-radius: 8px;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     text-align: center;
     outline: none;
@@ -317,75 +330,80 @@ body {
 
 .spin-btn {
     width: 100%;
-    padding: 16px;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    padding: 15px;
+    background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
     color: #111;
     border: none;
     border-radius: 13px;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 1.8px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition: all 0.15s;
+    box-shadow: 0 6px 20px rgba(251,191,36,0.3);
 }
 
 .spin-btn:active:not(:disabled) {
     transform: scale(0.97);
+    box-shadow: 0 2px 10px rgba(251,191,36,0.2);
 }
 
 .spin-btn:disabled {
-    opacity: 0.45;
+    opacity: 0.4;
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 .result {
-    margin: 14px 20px 0;
-    min-height: 48px;
-    background: rgba(255,255,255,0.03);
+    margin: 12px 16px 0;
+    min-height: 46px;
+    background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.05);
-    border-radius: 12px;
+    border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: #d1d5db;
     text-align: center;
-    padding: 0 12px;
+    padding: 0 10px;
+    transition: all 0.25s;
 }
 
 .result.win {
     color: #4ade80;
-    border-color: rgba(74,222,128,0.2);
-    background: rgba(74,222,128,0.05);
+    border-color: rgba(74,222,128,0.25);
+    background: rgba(74,222,128,0.06);
 }
 
 .result.lose {
     color: #f87171;
-    border-color: rgba(248,113,113,0.15);
+    border-color: rgba(248,113,113,0.18);
 }
 
 .result.bigwin {
     color: #fbbf24;
-    border-color: rgba(251,191,36,0.3);
-    background: rgba(251,191,36,0.06);
+    border-color: rgba(251,191,36,0.35);
+    background: rgba(251,191,36,0.08);
+    font-size: 15px;
 }
 
 .close-btn {
     display: block;
-    width: calc(100% - 40px);
-    margin: 16px 20px 20px;
-    padding: 13px;
+    width: calc(100% - 32px);
+    margin: 14px 16px 18px;
+    padding: 12px;
     background: transparent;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.07);
     color: #6b7280;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    border-radius: 12px;
+    border-radius: 11px;
     cursor: pointer;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.9px;
     transition: all 0.15s;
 }
 
@@ -396,16 +414,16 @@ body {
 
 .footer {
     text-align: center;
-    padding-bottom: 16px;
-    font-size: 10px;
+    padding-bottom: 14px;
+    font-size: 9px;
     color: #4b5563;
-    letter-spacing: 1.2px;
+    letter-spacing: 1.3px;
     text-transform: uppercase;
 }
 
 @media (max-width: 360px) {
-    .slot { font-size: 34px; }
-    .balance-value { font-size: 22px; }
+    .slot { font-size: 36px; }
+    .balance-value { font-size: 21px; }
 }
 </style>
 </head>
@@ -427,9 +445,9 @@ body {
 
     <div class="slots-wrap">
         <div class="slots">
-            <div class="slot-box"><div class="slot" id="slot1">🍒</div></div>
-            <div class="slot-box"><div class="slot" id="slot2">🍋</div></div>
-            <div class="slot-box"><div class="slot" id="slot3">🍇</div></div>
+            <div class="slot-box" id="box1"><div class="slot" id="slot1">🍒</div></div>
+            <div class="slot-box" id="box2"><div class="slot" id="slot2">🍋</div></div>
+            <div class="slot-box" id="box3"><div class="slot" id="slot3">🍇</div></div>
         </div>
     </div>
 
@@ -454,8 +472,8 @@ body {
 <script>
 const tg = window.Telegram.WebApp;
 tg.expand();
-tg.setHeaderColor('#0c0c12');
-tg.setBackgroundColor('#0c0c12');
+tg.setHeaderColor('#08080d');
+tg.setBackgroundColor('#08080d');
 
 let balance = 25;
 let isSpinning = false;
@@ -464,6 +482,9 @@ const symbols = ['🍒','🍋','🍊','🍇','💎','7️⃣','⭐','🍉'];
 const s1 = document.getElementById('slot1');
 const s2 = document.getElementById('slot2');
 const s3 = document.getElementById('slot3');
+const box1 = document.getElementById('box1');
+const box2 = document.getElementById('box2');
+const box3 = document.getElementById('box3');
 const spinBtn = document.getElementById('spinBtn');
 const betInput = document.getElementById('betAmount');
 const resultDiv = document.getElementById('result');
@@ -474,14 +495,30 @@ function getUserId() {
 }
 
 function updateBalance(val) {
-    balance = val;
-    balanceEl.innerHTML = val + ' <small>₴</small>';
+    balance = Math.max(0, val);
+    balanceEl.innerHTML = balance + ' <small>₴</small>';
+}
+
+function getWinChance(bet) {
+    // Маленькие ставки — выше шанс, большие — ниже
+    if (bet <= 50) return 0.19;
+    if (bet <= 100) return 0.16;
+    if (bet <= 200) return 0.13;
+    if (bet <= 400) return 0.10;
+    return 0.08;
 }
 
 function spinSlots() {
     if (isSpinning) return;
-    const bet = parseInt(betInput.value) || 25;
-    if (bet < 25 || bet > balance) {
+
+    let bet = parseInt(betInput.value) || 25;
+    if (bet < 25) bet = 25;
+    if (bet > balance) {
+        resultDiv.textContent = 'Недостаточно средств';
+        resultDiv.className = 'result lose';
+        return;
+    }
+    if (balance < 25) {
         resultDiv.textContent = 'Минимальная ставка 25 ₴';
         resultDiv.className = 'result lose';
         return;
@@ -489,83 +526,128 @@ function spinSlots() {
 
     isSpinning = true;
     spinBtn.disabled = true;
-    resultDiv.textContent = 'Вращение...';
+    resultDiv.textContent = 'Крутим...';
     resultDiv.className = 'result';
 
+    // Сразу списываем ставку (чтобы не ушло в минус)
+    balance -= bet;
+    updateBalance(balance);
+
     const slots = [s1, s2, s3];
-    const final = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+    const boxes = [box1, box2, box3];
+    const final = [];
     let finished = 0;
 
-    slots.forEach((slot, i) => {
-        setTimeout(() => {
-            slot.classList.add('spinning');
-            const interval = setInterval(() => {
-                if (slot.classList.contains('spinning')) {
-                    slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
-                }
-            }, 70);
+    // Генерируем финальные символы с учётом шанса
+    const chance = getWinChance(bet);
+    const willWin = Math.random() < chance;
 
-            setTimeout(() => {
-                clearInterval(interval);
-                slot.textContent = final[i];
-                slot.classList.remove('spinning');
-                finished++;
-                if (finished === 3) {
-                    setTimeout(() => {
-                        checkWin(final, bet);
-                        isSpinning = false;
-                        spinBtn.disabled = false;
-                    }, 200);
-                }
-            }, 1100);
-        }, i * 280);
+    if (willWin) {
+        // Формируем выигрышную комбинацию
+        const roll = Math.random();
+        if (roll < 0.12) {
+            // Тройка (редкая)
+            const sym = symbols[Math.floor(Math.random() * symbols.length)];
+            final.push(sym, sym, sym);
+        } else if (roll < 0.55) {
+            // Пара
+            const sym = symbols[Math.floor(Math.random() * symbols.length)];
+            const pos = Math.floor(Math.random() * 3);
+            final[0] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[1] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[2] = symbols[Math.floor(Math.random() * symbols.length)];
+            if (pos === 0) { final[0] = final[1] = sym; }
+            else if (pos === 1) { final[1] = final[2] = sym; }
+            else { final[0] = final[2] = sym; }
+        } else {
+            // Один алмаз
+            final[0] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[1] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[2] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[Math.floor(Math.random() * 3)] = '💎';
+        }
+    } else {
+        // Проигрыш — почти всегда разные
+        do {
+            final[0] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[1] = symbols[Math.floor(Math.random() * symbols.length)];
+            final[2] = symbols[Math.floor(Math.random() * symbols.length)];
+        } while (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]);
+    }
+
+    // Анимация: быстрый старт → поочерёдная остановка
+    slots.forEach((slot, i) => {
+        boxes[i].classList.add('active');
+        slot.classList.add('spinning');
+
+        const interval = setInterval(() => {
+            if (slot.classList.contains('spinning')) {
+                slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            }
+        }, 55);
+
+        // Остановка: 1-й через 900мс, 2-й через 1400мс, 3-й через 1900мс
+        const stopDelay = 900 + i * 500;
+
+        setTimeout(() => {
+            clearInterval(interval);
+            slot.classList.remove('spinning');
+            slot.textContent = final[i];
+            boxes[i].classList.remove('active');
+
+            finished++;
+            if (finished === 3) {
+                setTimeout(() => {
+                    checkWin(final, bet);
+                    isSpinning = false;
+                    spinBtn.disabled = false;
+                }, 180);
+            }
+        }, stopDelay);
     });
 }
 
 function checkWin(results, bet) {
     const [a, b, c] = results;
-    let win = 0;
+    let winAmount = 0;
     let msg = '';
     let cls = 'lose';
 
-    const r = Math.random();
-
-    if (r > 0.11) {
-        win = 0;
-        msg = 'Повезёт в следующий раз';
-    } else if (a === b && b === c) {
-        if (a === '💎') { win = bet * 10; msg = '💎 ДЖЕКПОТ ×10'; cls = 'bigwin'; }
-        else if (a === '7️⃣') { win = bet * 8; msg = '7️⃣ СЧАСТЛИВЧИК ×8'; cls = 'bigwin'; }
-        else if (a === '⭐') { win = bet * 12; msg = '⭐ СУПЕР ×12'; cls = 'bigwin'; }
-        else { win = bet * 4; msg = 'Три в ряд ×4'; cls = 'win'; }
-    } else if (a === b || b === c || a === c) {
-        if (Math.random() < 0.25) {
-            win = Math.floor(bet * 1.5);
-            msg = 'Пара ×1.5';
-            cls = 'win';
-        } else {
-            msg = 'Почти...';
-        }
-    } else if ([a,b,c].includes('💎') && Math.random() < 0.12) {
-        win = Math.floor(bet * 1.5);
-        msg = '💎 Бриллиант ×1.5';
+    if (a === b && b === c) {
+        if (a === '💎') { winAmount = bet * 10; msg = '💎 ДЖЕКПОТ ×10'; cls = 'bigwin'; }
+        else if (a === '7️⃣') { winAmount = bet * 8; msg = '7️⃣ СЧАСТЛИВЧИК ×8'; cls = 'bigwin'; }
+        else if (a === '⭐') { winAmount = bet * 12; msg = '⭐ СУПЕР ×12'; cls = 'bigwin'; }
+        else { winAmount = bet * 4; msg = 'Три в ряд ×4'; cls = 'win'; }
+    }
+    else if (a === b || b === c || a === c) {
+        winAmount = Math.floor(bet * 1.6);
+        msg = 'Пара ×1.6';
         cls = 'win';
-    } else {
+    }
+    else if ([a,b,c].includes('💎')) {
+        winAmount = Math.floor(bet * 1.4);
+        msg = '💎 Бриллиант ×1.4';
+        cls = 'win';
+    }
+    else {
         msg = 'Повезёт в следующий раз';
+        cls = 'lose';
     }
 
-    const net = win - bet;
-    balance += net;
+    // Добавляем выигрыш (ставка уже списана)
+    balance += winAmount;
     updateBalance(balance);
 
-    if (net > 0) {
+    if (winAmount > 0) {
         [s1,s2,s3].forEach(s => s.classList.add('win'));
-        setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 700);
+        setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 650);
     }
 
-    resultDiv.textContent = msg + (net !== 0 ? ` ${net > 0 ? '+' : ''}${net} ₴` : '');
+    const net = winAmount - bet;
+    resultDiv.textContent = msg + (winAmount > 0 ? ` +${winAmount} ₴` : '');
     resultDiv.className = 'result ' + cls;
 
+    // Отправляем на сервер (net = winAmount - bet)
     const uid = getUserId();
     if (uid) {
         fetch('/game_result', {
@@ -586,7 +668,9 @@ function loadBalance() {
     if (!uid) return;
     fetch('/get_balance?user_id=' + uid)
         .then(r => r.json())
-        .then(d => { if (d.balance !== undefined) updateBalance(d.balance); })
+        .then(d => {
+            if (d.balance !== undefined) updateBalance(d.balance);
+        })
         .catch(()=>{});
 }
 
@@ -612,7 +696,7 @@ spinBtn.onclick = spinSlots;
 document.getElementById('closeBtn').onclick = () => tg.close();
 
 loadBalance();
-setInterval(loadBalance, 12000);
+setInterval(loadBalance, 10000);
 </script>
 </body>
 </html>'''
@@ -629,7 +713,7 @@ def get_balance():
         with app.app_context():
             user = User.query.filter_by(telegram_id=str(user_id)).first()
             if user:
-                return jsonify({'balance': user.balance})
+                return jsonify({'balance': max(0, user.balance)})
     return jsonify({'balance': 25})
 
 @app.route('/game_result', methods=['POST'])
@@ -637,13 +721,13 @@ def game_result():
     data = request.json or {}
     user_id = str(data.get('user_id', ''))
     bet = int(data.get('bet', 0))
-    win = int(data.get('win', 0))
+    win = int(data.get('win', 0))  # уже net (win - bet)
     symbols = data.get('symbols', '')
 
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
-            user.balance += win
+            user.balance = max(0, user.balance + win)
             user.games_played += 1
             if win > 0:
                 user.total_won += win
@@ -692,7 +776,7 @@ def balance_cmd(message):
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
             bot.reply_to(message,
-                f"💰 Баланс: <b>{user.balance} ₴</b>\n"
+                f"💰 Баланс: <b>{max(0, user.balance)} ₴</b>\n"
                 f"🏆 Выиграно: {user.total_won} ₴\n"
                 f"💔 Проиграно: {user.total_lost} ₴\n"
                 f"🎮 Игр: {user.games_played}"
@@ -710,7 +794,7 @@ def admin_cmd(message):
         else:
             bot.reply_to(message, "Нет доступа")
 
-# ========== АДМИНКА (полностью переписана, не виснет) ==========
+# ========== АДМИНКА ==========
 def show_admin(chat_id):
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(
@@ -731,7 +815,6 @@ def all_callbacks(call):
             bot.answer_callback_query(call.id, "Напиши /start")
             return
 
-        # обычные кнопки
         if data == "admin_panel":
             if not user.is_admin:
                 bot.answer_callback_query(call.id, "Нет прав", show_alert=True)
@@ -746,7 +829,6 @@ def all_callbacks(call):
 
         bot.answer_callback_query(call.id)
 
-        # список пользователей
         if data.startswith("adm_users_"):
             page = int(data.split("_")[-1])
             show_users(call.message, page)
@@ -764,7 +846,6 @@ def all_callbacks(call):
                 pass
             return
 
-        # действия над пользователем
         if data.startswith("adm_act_"):
             parts = data.split("_")
             target_id = parts[2]
@@ -788,7 +869,7 @@ def show_users(message, page=0):
             name = u.first_name or "—"
             uname = f"@{u.username}" if u.username else "нет"
             text += f"{i}. <b>{name}</b> ({uname})\n"
-            text += f"   ID: <code>{u.telegram_id}</code> · {u.balance} ₴\n\n"
+            text += f"   ID: <code>{u.telegram_id}</code> · {max(0, u.balance)} ₴\n\n"
 
         markup = InlineKeyboardMarkup()
         row = []
@@ -836,7 +917,7 @@ def process_find(message):
             f"<b>{user.first_name or '—'}</b>\n"
             f"ID: <code>{user.telegram_id}</code>\n"
             f"Username: @{user.username or 'нет'}\n"
-            f"Баланс: <b>{user.balance} ₴</b>\n"
+            f"Баланс: <b>{max(0, user.balance)} ₴</b>\n"
             f"Игр: {user.games_played} · Выиграно: {user.total_won} · Проиграно: {user.total_lost}\n"
             f"Админ: {'да' if user.is_admin else 'нет'}",
             reply_markup=markup
@@ -894,7 +975,7 @@ def do_take(message, target_id):
                 if user.balance < amount:
                     bot.send_message(message.chat.id, "Недостаточно средств")
                     return
-                user.balance -= amount
+                user.balance = max(0, user.balance - amount)
                 db.session.commit()
                 bot.send_message(message.chat.id, f"Забрано {amount} ₴ у {user.first_name}")
             else:
