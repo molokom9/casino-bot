@@ -435,4 +435,4 @@ def admin_command(message):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
-    app.run(host='0.0.0.0', port=port)ы
+    app.run(host='0.0.0.0', port=port)
