@@ -590,19 +590,16 @@ function spinSlots() {
         } while (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]);
     }
 
-    // Быстрое вращение + медленная поочерёдная остановка
     slots.forEach((slot, i) => {
         boxes[i].classList.add('active');
         slot.classList.add('spinning');
 
-        // Очень быстрая смена символов
         const interval = setInterval(() => {
             if (slot.classList.contains('spinning')) {
                 slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
             }
         }, 45);
 
-        // Остановка: 1-й ~1.3с, 2-й ~2.2с, 3-й ~3.2с
         const stopDelay = 1300 + i * 950;
 
         setTimeout(() => {
@@ -817,7 +814,6 @@ def start(message):
     except Exception as e:
         print("DB error:", e)
 
-    # Кнопка Open
     try:
         bot.set_chat_menu_button(
             chat_id=message.chat.id,
@@ -831,7 +827,7 @@ def start(message):
 
 @bot.message_handler(commands=['balance'])
 def balance_cmd(message):
- mon = str(message.from_user.id)
+    user_id = str(message.from_user.id)
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
