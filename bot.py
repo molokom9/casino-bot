@@ -72,7 +72,7 @@ with app.app_context():
 # ========== БОТ ==========
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# ========== HTML ==========
+# ========== HTML (без изменений) ==========
 HTML = '''<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -526,7 +526,6 @@ function spinSlots() {
     
     const slots = [s1, s2, s3];
     
-    // Поочередный запуск слотов с задержкой
     let delay = 0;
     const results = [];
     const finalResults = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
@@ -535,21 +534,18 @@ function spinSlots() {
         setTimeout(() => {
             slot.classList.add('spinning');
             
-            // Показываем промежуточные символы во время вращения
             let interval = setInterval(() => {
                 if (slot.classList.contains('spinning')) {
                     slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
                 }
             }, 80);
             
-            // Останавливаем слот через 1.2 секунды
             setTimeout(() => {
                 clearInterval(interval);
                 slot.textContent = finalResults[index];
                 slot.classList.remove('spinning');
                 results[index] = finalResults[index];
                 
-                // Проверяем, все ли слоты остановились
                 if (results.length === 3 && results.every(r => r !== undefined)) {
                     setTimeout(() => {
                         checkWin(finalResults);
@@ -572,17 +568,14 @@ function checkWin(results) {
     let className = 'lose';
     let isBigWin = false;
     
-    // Редкие выигрыши - только 10% шанс
     const winChance = Math.random();
     
     if (winChance > 0.10) {
-        // 90% - проигрыш
         win = 0;
         msg = '😔 Повезет в следующий раз';
         className = 'lose';
     }
     else if (r1 === r2 && r2 === r3) {
-        // Джекпот - 0.5% шанс
         if (Math.random() < 0.05) {
             if (r1 === '💎') {
                 win = bet * 10;
@@ -611,7 +604,6 @@ function checkWin(results) {
         }
     }
     else if (r1 === r2 || r2 === r3 || r1 === r3) {
-        // Пара - 2% шанс
         if (Math.random() < 0.2) {
             win = bet * 1.5;
             msg = '✨ ПАРА! x1.5!';
@@ -623,7 +615,6 @@ function checkWin(results) {
         }
     }
     else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
-        // Бриллиант - 1% шанс
         if (Math.random() < 0.1) {
             win = bet * 1.5;
             msg = '💎 БРИЛЛИАНТ! x1.5!';
@@ -640,9 +631,7 @@ function checkWin(results) {
         className = 'lose';
     }
     
-    // Убеждаемся, что win целое число
     win = Math.floor(win);
-    
     const net = win - bet;
     balance += net;
     updateBalance(balance);
@@ -834,7 +823,11 @@ def admin_callback(call):
             return
         
         if call.data == "admin_users":
-            show_users_list(call.message)
+            show_users_list(call.message, 0)
+        
+        elif call.data.startswith("admin_page_"):
+            page = int(call.data.split("_")[2])
+            show_users_list(call.message, page)
         
         elif call.data == "admin_find":
             bot.send_message(call.message.chat.id, "Введите ID пользователя или username (с @):")
@@ -849,27 +842,31 @@ def admin_callback(call):
         elif call.data == "back":
             start(call.message)
 
-def show_users_list(message):
+def show_users_list(message, page=0):
     try:
         with app.app_context():
-            users = User.query.order_by(User.balance.desc()).all()
-            
-            if not users:
+            total_users = User.query.count()
+            if total_users == 0:
                 bot.send_message(message.chat.id, "📋 **Список пользователей пуст**\n\nПока нет зарегистрированных пользователей.", parse_mode='Markdown')
                 return
             
-            text = "👥 **Список пользователей**\n\n"
-            count = 0
-            for i, u in enumerate(users[:20], 1):
+            users = User.query.order_by(User.balance.desc()).offset(page * 5).limit(5).all()
+            total_pages = (total_users - 1) // 5 + 1
+            
+            text = f"👥 **Список пользователей (стр. {page+1}/{total_pages})**\n\n"
+            for i, u in enumerate(users, start=page*5+1):
                 text += f"{i}. {u.first_name} (@{u.username or 'нет'})\n"
                 text += f"   ID: `{u.telegram_id}` | Баланс: {u.balance} ₴\n\n"
-                count += 1
-            
-            if len(users) > 20:
-                text += f"... и ещё {len(users) - 20} пользователей"
             
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("🔄 Обновить", callback_data="admin_users"))
+            row = []
+            if page > 0:
+                row.append(InlineKeyboardButton("◀️ Назад", callback_data=f"admin_page_{page-1}"))
+            if (page + 1) * 5 < total_users:
+                row.append(InlineKeyboardButton("Вперед ▶️", callback_data=f"admin_page_{page+1}"))
+            if row:
+                markup.row(*row)
+            markup.row(InlineKeyboardButton("🔄 Обновить", callback_data=f"admin_page_{page}"))
             markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
             
             bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
@@ -879,7 +876,6 @@ def show_users_list(message):
 def admin_find_user(message):
     try:
         query = message.text.strip()
-        
         if not query:
             bot.send_message(message.chat.id, "❌ Введите ID или username!")
             return
