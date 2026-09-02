@@ -1,6 +1,8 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 import threading
 import os
 import json
@@ -10,14 +12,63 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN', '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3
 WEBAPP_URL = os.environ.get('WEBAPP_URL', 'https://casino-bot-mw0h.onrender.com/')
 ADMIN_ID = '8663798936'
 
-# ========== БОТ ==========
-bot = telebot.TeleBot(BOT_TOKEN)
-
-# ========== ВЕБ-СЕРВЕР ==========
+# ========== БАЗА ДАННЫХ ==========
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///casino.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-init_db(app)
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    telegram_id = db.Column(db.String(50), unique=True, nullable=False)
+    username = db.Column(db.String(100))
+    first_name = db.Column(db.String(100))
+    last_name = db.Column(db.String(100))
+    balance = db.Column(db.Integer, default=1000)
+    total_won = db.Column(db.Integer, default=0)
+    total_lost = db.Column(db.Integer, default=0)
+    games_played = db.Column(db.Integer, default=0)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_active = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Transaction(db.Model):
+    __tablename__ = 'transactions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    amount = db.Column(db.Integer)
+    type = db.Column(db.String(50))
+    description = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class GameHistory(db.Model):
+    __tablename__ = 'game_history'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    bet = db.Column(db.Integer)
+    win = db.Column(db.Integer)
+    symbols = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Создаем таблицы и админа
+with app.app_context():
+    db.create_all()
+    admin = User.query.filter_by(telegram_id=ADMIN_ID).first()
+    if not admin:
+        admin = User(
+            telegram_id=ADMIN_ID,
+            username='admin',
+            first_name='Admin',
+            is_admin=True,
+            balance=10000
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Админ создан!")
+
+# ========== БОТ ==========
+bot = telebot.TeleBot(BOT_TOKEN)
 
 # ========== HTML ==========
 HTML = '''
@@ -131,6 +182,7 @@ loadBalance();
 </html>
 '''
 
+# ========== МАРШРУТЫ ==========
 @app.route('/')
 def index():
     return HTML
@@ -174,6 +226,7 @@ def game_result():
     
     return jsonify({'status': 'ok'})
 
+# ========== КОМАНДЫ БОТА ==========
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = str(message.from_user.id)
@@ -378,7 +431,8 @@ def admin_command(message):
         else:
             bot.send_message(message.chat.id, "❌ Нет прав!")
 
+# ========== ЗАПУСК ==========
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)ы
