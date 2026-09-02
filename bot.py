@@ -26,7 +26,7 @@ class User(db.Model):
     username = db.Column(db.String(100))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
-    balance = db.Column(db.Integer, default=0)          # стартовый баланс 0
+    balance = db.Column(db.Integer, default=0)
     total_won = db.Column(db.Integer, default=0)
     total_lost = db.Column(db.Integer, default=0)
     games_played = db.Column(db.Integer, default=0)
@@ -225,8 +225,8 @@ body {
 }
 
 .slot-box.active {
-    border-color: rgba(251,191,36,0.35);
-    box-shadow: 0 0 18px rgba(251,191,36,0.12);
+    border-color: rgba(251,191,36,0.4);
+    box-shadow: 0 0 22px rgba(251,191,36,0.18);
 }
 
 .slot {
@@ -243,22 +243,22 @@ body {
 }
 
 .slot.spinning {
-    animation: slotBlur 0.08s linear infinite;
+    animation: slotBlur 0.06s linear infinite;
 }
 
 @keyframes slotBlur {
-    0% { transform: translateY(-2px); filter: blur(0.5px); }
-    50% { transform: translateY(2px); filter: blur(1px); }
-    100% { transform: translateY(-2px); filter: blur(0.5px); }
+    0% { transform: translateY(-3px); filter: blur(0.8px); }
+    50% { transform: translateY(3px); filter: blur(1.2px); }
+    100% { transform: translateY(-3px); filter: blur(0.8px); }
 }
 
 .slot.win {
-    animation: winPulse 0.6s ease;
+    animation: winPulse 0.65s ease;
 }
 
 @keyframes winPulse {
     0% { transform: scale(1); }
-    40% { transform: scale(1.12); }
+    40% { transform: scale(1.15); }
     100% { transform: scale(1); }
 }
 
@@ -590,17 +590,20 @@ function spinSlots() {
         } while (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]);
     }
 
+    // Быстрое вращение + медленная поочерёдная остановка
     slots.forEach((slot, i) => {
         boxes[i].classList.add('active');
         slot.classList.add('spinning');
 
+        // Очень быстрая смена символов
         const interval = setInterval(() => {
             if (slot.classList.contains('spinning')) {
                 slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
             }
-        }, 55);
+        }, 45);
 
-        const stopDelay = 900 + i * 500;
+        // Остановка: 1-й ~1.3с, 2-й ~2.2с, 3-й ~3.2с
+        const stopDelay = 1300 + i * 950;
 
         setTimeout(() => {
             clearInterval(interval);
@@ -612,7 +615,7 @@ function spinSlots() {
             if (finished === 3) {
                 setTimeout(() => {
                     checkWin(final, bet, prevBalance);
-                }, 180);
+                }, 250);
             }
         }, stopDelay);
     });
@@ -658,7 +661,7 @@ function checkWin(results, bet, prevBalance) {
 
     if (winAmount > 0) {
         [s1,s2,s3].forEach(s => s.classList.add('win'));
-        setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 650);
+        setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 700);
     }
 
     resultDiv.textContent = msg + (winAmount > 0 ? ` +${winAmount} ₴` : '');
@@ -771,7 +774,6 @@ def start(message):
     user_id = str(message.from_user.id)
     first_name = message.from_user.first_name or 'Игрок'
 
-    # Сразу отправляем сообщение — чтобы не было задержки
     markup = InlineKeyboardMarkup()
     markup.row(
         InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")),
@@ -787,7 +789,6 @@ def start(message):
         reply_markup=markup
     )
 
-    # Потом уже работаем с базой (в фоне по сути)
     try:
         with app.app_context():
             user = User.query.filter_by(telegram_id=user_id).first()
@@ -803,29 +804,34 @@ def start(message):
                 db.session.commit()
 
             if user.is_admin:
-                # добавляем кнопку админки только если админ
                 markup_admin = InlineKeyboardMarkup()
                 markup_admin.row(
                     InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")),
                     InlineKeyboardButton("💳 Пополнить", url=REFILL_LINK)
                 )
                 markup_admin.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin_panel"))
-                bot.edit_message_reply_markup(message.chat.id, message.message_id + 1, reply_markup=markup_admin)
-    except:
-        pass
+                try:
+                    bot.edit_message_reply_markup(message.chat.id, message.message_id + 1, reply_markup=markup_admin)
+                except:
+                    pass
+    except Exception as e:
+        print("DB error:", e)
 
-    # Ставим кнопку меню (слева от скрепки)
+    # Кнопка Open
     try:
         bot.set_chat_menu_button(
             chat_id=message.chat.id,
-            menu_button=MenuButtonWebApp(text="Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}"))
+            menu_button=MenuButtonWebApp(
+                text="Open",
+                web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")
+            )
         )
-    except:
-        pass
+    except Exception as e:
+        print("Menu button error:", e)
 
 @bot.message_handler(commands=['balance'])
 def balance_cmd(message):
-    user_id = str(message.from_user.id)
+ mon = str(message.from_user.id)
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
