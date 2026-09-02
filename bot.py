@@ -1,5 +1,5 @@
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, MenuButtonWebApp
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -26,7 +26,7 @@ class User(db.Model):
     username = db.Column(db.String(100))
     first_name = db.Column(db.String(100))
     last_name = db.Column(db.String(100))
-    balance = db.Column(db.Integer, default=25)
+    balance = db.Column(db.Integer, default=0)          # стартовый баланс 0
     total_won = db.Column(db.Integer, default=0)
     total_lost = db.Column(db.Integer, default=0)
     games_played = db.Column(db.Integer, default=0)
@@ -437,7 +437,7 @@ body {
     <div class="balance-section">
         <div class="balance-card">
             <div class="balance-label">Баланс</div>
-            <div class="balance-value" id="balance">— <small>₴</small></div>
+            <div class="balance-value" id="balance">0 <small>₴</small></div>
         </div>
     </div>
 
@@ -463,7 +463,7 @@ body {
         <button class="spin-btn" id="spinBtn">SPIN</button>
     </div>
 
-    <div class="result" id="result">Нажми SPIN</div>
+    <div class="result" id="result">Пополни баланс и крути</div>
 
     <button class="close-btn" id="closeBtn">Закрыть</button>
     <div class="footer">18+ · Играй ответственно</div>
@@ -536,7 +536,7 @@ function spinSlots() {
     if (bet < 25) bet = 25;
 
     if (balance < 25) {
-        resultDiv.textContent = 'Минимальная ставка 25 ₴';
+        resultDiv.textContent = 'Пополни баланс (мин. 25 ₴)';
         resultDiv.className = 'result lose';
         return;
     }
@@ -551,7 +551,6 @@ function spinSlots() {
     resultDiv.textContent = 'Крутим...';
     resultDiv.className = 'result';
 
-    // Временно списываем ставку на клиенте (для отзывчивости)
     const prevBalance = balance;
     updateBalance(balance - bet);
 
@@ -655,7 +654,6 @@ function checkWin(results, bet, prevBalance) {
         cls = 'lose';
     }
 
-    // Временно показываем результат
     updateBalance(prevBalance - bet + winAmount);
 
     if (winAmount > 0) {
@@ -666,7 +664,6 @@ function checkWin(results, bet, prevBalance) {
     resultDiv.textContent = msg + (winAmount > 0 ? ` +${winAmount} ₴` : '');
     resultDiv.className = 'result ' + cls;
 
-    // Отправляем на сервер и берём точный баланс из ответа
     const uid = getUserId();
     if (uid) {
         fetch('/game_result', {
@@ -684,12 +681,10 @@ function checkWin(results, bet, prevBalance) {
             if (d.balance !== undefined) {
                 updateBalance(d.balance);
             } else {
-                // на всякий случай перезапрашиваем
                 loadBalance(true);
             }
         })
         .catch(() => {
-            // если сеть упала — всё равно синхронизируем
             loadBalance(true);
         })
         .finally(() => {
@@ -709,7 +704,7 @@ document.getElementById('betMinus').onclick = () => {
 
 document.getElementById('betPlus').onclick = () => {
     let v = parseInt(betInput.value) || 25;
-    betInput.value = Math.min(balance, v + 25);
+    betInput.value = Math.min(balance || 25, v + 25);
 };
 
 betInput.onchange = () => {
@@ -723,10 +718,8 @@ betInput.onchange = () => {
 spinBtn.onclick = spinSlots;
 document.getElementById('closeBtn').onclick = () => tg.close();
 
-// Первая загрузка баланса
 loadBalance(true);
 
-// Периодическая синхронизация только когда не крутим
 setInterval(() => {
     if (!isSpinning) loadBalance();
 }, 12000);
@@ -747,14 +740,14 @@ def get_balance():
             user = User.query.filter_by(telegram_id=str(user_id)).first()
             if user:
                 return jsonify({'balance': max(0, user.balance)})
-    return jsonify({'balance': 25})
+    return jsonify({'balance': 0})
 
 @app.route('/game_result', methods=['POST'])
 def game_result():
     data = request.json or {}
     user_id = str(data.get('user_id', ''))
     bet = int(data.get('bet', 0))
-    win = int(data.get('win', 0))  # net
+    win = int(data.get('win', 0))
     symbols = data.get('symbols', '')
 
     with app.app_context():
@@ -776,32 +769,59 @@ def game_result():
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = str(message.from_user.id)
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if not user:
-            user = User(
-                telegram_id=user_id,
-                username=message.from_user.username,
-                first_name=message.from_user.first_name or '',
-                last_name=message.from_user.last_name or ''
-            )
-            db.session.add(user)
-            db.session.commit()
+    first_name = message.from_user.first_name or 'Игрок'
 
+    # Сразу отправляем сообщение — чтобы не было задержки
     markup = InlineKeyboardMarkup()
     markup.row(
         InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")),
         InlineKeyboardButton("💳 Пополнить", url=REFILL_LINK)
     )
-    if user.is_admin:
-        markup.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin_panel"))
 
     bot.send_message(
         message.chat.id,
-        f"Добро пожаловать в <b>Casino Royale</b>, {message.from_user.first_name}!\n\n"
-        f"Минимальная ставка — 25 ₴",
+        f"Добро пожаловать в <b>Casino Royale</b>, {first_name}!\n\n"
+        f"Баланс: <b>0 ₴</b>\n"
+        f"Минимальная ставка — 25 ₴\n\n"
+        f"Пополни баланс и начинай крутить!",
         reply_markup=markup
     )
+
+    # Потом уже работаем с базой (в фоне по сути)
+    try:
+        with app.app_context():
+            user = User.query.filter_by(telegram_id=user_id).first()
+            if not user:
+                user = User(
+                    telegram_id=user_id,
+                    username=message.from_user.username,
+                    first_name=message.from_user.first_name or '',
+                    last_name=message.from_user.last_name or '',
+                    balance=0
+                )
+                db.session.add(user)
+                db.session.commit()
+
+            if user.is_admin:
+                # добавляем кнопку админки только если админ
+                markup_admin = InlineKeyboardMarkup()
+                markup_admin.row(
+                    InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")),
+                    InlineKeyboardButton("💳 Пополнить", url=REFILL_LINK)
+                )
+                markup_admin.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin_panel"))
+                bot.edit_message_reply_markup(message.chat.id, message.message_id + 1, reply_markup=markup_admin)
+    except:
+        pass
+
+    # Ставим кнопку меню (слева от скрепки)
+    try:
+        bot.set_chat_menu_button(
+            chat_id=message.chat.id,
+            menu_button=MenuButtonWebApp(text="Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}"))
+        )
+    except:
+        pass
 
 @bot.message_handler(commands=['balance'])
 def balance_cmd(message):
