@@ -71,8 +71,7 @@ with app.app_context():
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # ========== HTML ==========
-HTML = '''
-<!DOCTYPE html>
+HTML = '''<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -179,8 +178,7 @@ betInput.addEventListener('change',()=>{let v=parseInt(betInput.value)||10;if(v<
 loadBalance();
 </script>
 </body>
-</html>
-'''
+</html>'''
 
 # ========== МАРШРУТЫ ==========
 @app.route('/')
@@ -355,8 +353,8 @@ def admin_give_currency(message):
                 bot.send_message(message.chat.id, f"✅ Выдано {amount} пользователю {user.first_name}")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Формат: ID СУММА")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 def admin_take_currency(message):
     try:
@@ -375,8 +373,8 @@ def admin_take_currency(message):
                     bot.send_message(message.chat.id, "❌ Недостаточно средств")
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Формат: ID СУММА")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 def admin_get_user_info(message):
     try:
@@ -396,8 +394,8 @@ def admin_get_user_info(message):
                 )
             else:
                 bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except:
-        bot.send_message(message.chat.id, "❌ Ошибка!")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
 
 def show_top_players(message):
     with app.app_context():
@@ -420,6 +418,8 @@ def balance_command(message):
                 f"💔 Проиграно: {user.total_lost}\n"
                 f"🎮 Игр: {user.games_played}"
             )
+        else:
+            bot.send_message(message.chat.id, "❌ Пользователь не найден. Напишите /start")
 
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
