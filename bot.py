@@ -4,7 +4,6 @@ from flask import Flask, request, jsonify
 import threading
 import os
 import json
-from database import db, User, Transaction, GameHistory, init_db
 
 # ========== КОНФИГ ==========
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '8941440753:AAGejY76StUx3ae6paRaTIqQWXr3hPqWkXs')
