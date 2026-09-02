@@ -437,7 +437,7 @@ body {
     <div class="balance-section">
         <div class="balance-card">
             <div class="balance-label">Баланс</div>
-            <div class="balance-value" id="balance">25 <small>₴</small></div>
+            <div class="balance-value" id="balance">— <small>₴</small></div>
         </div>
     </div>
 
@@ -475,8 +475,9 @@ tg.expand();
 tg.setHeaderColor('#08080d');
 tg.setBackgroundColor('#08080d');
 
-let balance = 25;
+let balance = 0;
 let isSpinning = false;
+let isSyncing = false;
 const symbols = ['🍒','🍋','🍊','🍇','💎','7️⃣','⭐','🍉'];
 
 const s1 = document.getElementById('slot1');
@@ -495,12 +496,11 @@ function getUserId() {
 }
 
 function updateBalance(val) {
-    balance = Math.max(0, val);
+    balance = Math.max(0, Math.floor(val));
     balanceEl.innerHTML = balance + ' <small>₴</small>';
 }
 
 function getWinChance(bet) {
-    // Чуть выше шансы, особенно на маленьких ставках
     if (bet <= 50) return 0.23;
     if (bet <= 100) return 0.19;
     if (bet <= 200) return 0.15;
@@ -508,18 +508,40 @@ function getWinChance(bet) {
     return 0.09;
 }
 
+function loadBalance(force = false) {
+    if (isSpinning && !force) return;
+    if (isSyncing) return;
+
+    const uid = getUserId();
+    if (!uid) return;
+
+    isSyncing = true;
+    fetch('/get_balance?user_id=' + uid)
+        .then(r => r.json())
+        .then(d => {
+            if (d.balance !== undefined) {
+                updateBalance(d.balance);
+            }
+        })
+        .catch(() => {})
+        .finally(() => {
+            isSyncing = false;
+        });
+}
+
 function spinSlots() {
     if (isSpinning) return;
 
     let bet = parseInt(betInput.value) || 25;
     if (bet < 25) bet = 25;
-    if (bet > balance) {
-        resultDiv.textContent = 'Недостаточно средств';
+
+    if (balance < 25) {
+        resultDiv.textContent = 'Минимальная ставка 25 ₴';
         resultDiv.className = 'result lose';
         return;
     }
-    if (balance < 25) {
-        resultDiv.textContent = 'Минимальная ставка 25 ₴';
+    if (bet > balance) {
+        resultDiv.textContent = 'Недостаточно средств';
         resultDiv.className = 'result lose';
         return;
     }
@@ -529,9 +551,9 @@ function spinSlots() {
     resultDiv.textContent = 'Крутим...';
     resultDiv.className = 'result';
 
-    // Сразу списываем ставку
-    balance -= bet;
-    updateBalance(balance);
+    // Временно списываем ставку на клиенте (для отзывчивости)
+    const prevBalance = balance;
+    updateBalance(balance - bet);
 
     const slots = [s1, s2, s3];
     const boxes = [box1, box2, box3];
@@ -544,11 +566,9 @@ function spinSlots() {
     if (willWin) {
         const roll = Math.random();
         if (roll < 0.10) {
-            // Тройка (очень редко)
             const sym = symbols[Math.floor(Math.random() * symbols.length)];
             final.push(sym, sym, sym);
         } else if (roll < 0.55) {
-            // Пара
             const sym = symbols[Math.floor(Math.random() * symbols.length)];
             const pos = Math.floor(Math.random() * 3);
             final[0] = symbols[Math.floor(Math.random() * symbols.length)];
@@ -558,14 +578,12 @@ function spinSlots() {
             else if (pos === 1) { final[1] = final[2] = sym; }
             else { final[0] = final[2] = sym; }
         } else {
-            // Один 💎
             final[0] = symbols[Math.floor(Math.random() * symbols.length)];
             final[1] = symbols[Math.floor(Math.random() * symbols.length)];
             final[2] = symbols[Math.floor(Math.random() * symbols.length)];
             final[Math.floor(Math.random() * 3)] = '💎';
         }
     } else {
-        // Проигрыш
         do {
             final[0] = symbols[Math.floor(Math.random() * symbols.length)];
             final[1] = symbols[Math.floor(Math.random() * symbols.length)];
@@ -573,7 +591,6 @@ function spinSlots() {
         } while (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]);
     }
 
-    // Анимация
     slots.forEach((slot, i) => {
         boxes[i].classList.add('active');
         slot.classList.add('spinning');
@@ -595,16 +612,14 @@ function spinSlots() {
             finished++;
             if (finished === 3) {
                 setTimeout(() => {
-                    checkWin(final, bet);
-                    isSpinning = false;
-                    spinBtn.disabled = false;
+                    checkWin(final, bet, prevBalance);
                 }, 180);
             }
         }, stopDelay);
     });
 }
 
-function checkWin(results, bet) {
+function checkWin(results, bet, prevBalance) {
     const [a, b, c] = results;
     let winAmount = 0;
     let msg = '';
@@ -640,9 +655,8 @@ function checkWin(results, bet) {
         cls = 'lose';
     }
 
-    // Добавляем выигрыш
-    balance += winAmount;
-    updateBalance(balance);
+    // Временно показываем результат
+    updateBalance(prevBalance - bet + winAmount);
 
     if (winAmount > 0) {
         [s1,s2,s3].forEach(s => s.classList.add('win'));
@@ -652,6 +666,7 @@ function checkWin(results, bet) {
     resultDiv.textContent = msg + (winAmount > 0 ? ` +${winAmount} ₴` : '');
     resultDiv.className = 'result ' + cls;
 
+    // Отправляем на сервер и берём точный баланс из ответа
     const uid = getUserId();
     if (uid) {
         fetch('/game_result', {
@@ -660,22 +675,31 @@ function checkWin(results, bet) {
             body: JSON.stringify({
                 user_id: uid,
                 bet: bet,
-                win: winAmount - bet,   // net
+                win: winAmount - bet,
                 symbols: results.join('')
             })
-        }).catch(()=>{});
-    }
-}
-
-function loadBalance() {
-    const uid = getUserId();
-    if (!uid) return;
-    fetch('/get_balance?user_id=' + uid)
+        })
         .then(r => r.json())
         .then(d => {
-            if (d.balance !== undefined) updateBalance(d.balance);
+            if (d.balance !== undefined) {
+                updateBalance(d.balance);
+            } else {
+                // на всякий случай перезапрашиваем
+                loadBalance(true);
+            }
         })
-        .catch(()=>{});
+        .catch(() => {
+            // если сеть упала — всё равно синхронизируем
+            loadBalance(true);
+        })
+        .finally(() => {
+            isSpinning = false;
+            spinBtn.disabled = false;
+        });
+    } else {
+        isSpinning = false;
+        spinBtn.disabled = false;
+    }
 }
 
 document.getElementById('betMinus').onclick = () => {
@@ -699,8 +723,13 @@ betInput.onchange = () => {
 spinBtn.onclick = spinSlots;
 document.getElementById('closeBtn').onclick = () => tg.close();
 
-loadBalance();
-setInterval(loadBalance, 10000);
+// Первая загрузка баланса
+loadBalance(true);
+
+// Периодическая синхронизация только когда не крутим
+setInterval(() => {
+    if (!isSpinning) loadBalance();
+}, 12000);
 </script>
 </body>
 </html>'''
@@ -740,7 +769,8 @@ def game_result():
             user.last_active = datetime.utcnow()
             db.session.add(GameHistory(user_id=user.id, bet=bet, win=win, symbols=symbols))
             db.session.commit()
-    return jsonify({'status': 'ok'})
+            return jsonify({'status': 'ok', 'balance': user.balance})
+    return jsonify({'status': 'error', 'balance': 0})
 
 # ========== BOT ==========
 @bot.message_handler(commands=['start'])
