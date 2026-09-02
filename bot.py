@@ -5,7 +5,6 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import threading
 import os
-import json
 import random
 
 # ========== КОНФИГ ==========
@@ -14,7 +13,7 @@ WEBAPP_URL = os.environ.get('WEBAPP_URL', 'https://casino-bot-mw0h.onrender.com/
 ADMIN_ID = '8663798936'
 REFILL_LINK = 'https://t.me/Qwile_Games'
 
-# ========== БАЗА ДАННЫХ ==========
+# ========== БАЗА ==========
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///casino.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,15 +34,6 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_active = db.Column(db.DateTime, default=datetime.utcnow)
 
-class Transaction(db.Model):
-    __tablename__ = 'transactions'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    amount = db.Column(db.Integer)
-    type = db.Column(db.String(50))
-    description = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
 class GameHistory(db.Model):
     __tablename__ = 'game_history'
     id = db.Column(db.Integer, primary_key=True)
@@ -53,7 +43,6 @@ class GameHistory(db.Model):
     symbols = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ========== СОЗДАНИЕ ТАБЛИЦ ==========
 with app.app_context():
     db.create_all()
     admin = User.query.filter_by(telegram_id=ADMIN_ID).first()
@@ -63,651 +52,572 @@ with app.app_context():
             username='admin',
             first_name='Admin',
             is_admin=True,
-            balance=1000
+            balance=10000
         )
         db.session.add(admin)
         db.session.commit()
-        print("✅ Админ создан!")
 
-# ========== БОТ ==========
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, parse_mode='HTML')
 
-# ========== HTML (без изменений) ==========
+# ========== HTML (новый премиальный дизайн) ==========
 HTML = '''<!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CASINO ROYALE</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0f;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
-        }
-        
-        .container {
-            background: #12121a;
-            border-radius: 24px;
-            padding: 24px 20px 20px;
-            max-width: 400px;
-            width: 100%;
-            border: 1px solid #2a2a3a;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        
-        .logo {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: 1px;
-        }
-        
-        .logo span {
-            color: #ffd700;
-        }
-        
-        .status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            color: #4a4a5a;
-            letter-spacing: 1px;
-        }
-        
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            background: #00ff88;
-            border-radius: 50%;
-            animation: blink 1.5s infinite;
-        }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .balance-card {
-            background: #1a1a26;
-            border: 1px solid #2a2a3a;
-            border-radius: 14px;
-            padding: 14px 18px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .balance-label {
-            color: #6a6a7a;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-        
-        .balance-value {
-            font-size: 26px;
-            font-weight: 700;
-            color: #ffd700;
-        }
-        
-        .balance-value small {
-            font-size: 14px;
-            color: #6a6a7a;
-        }
-        
-        .btn-refill {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(135deg, #00d4ff, #0088cc);
-            color: #ffffff;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 16px;
-            text-align: center;
-            text-decoration: none;
-            transition: all 0.3s;
-            letter-spacing: 0.5px;
-        }
-        
-        .btn-refill:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 30px rgba(0, 212, 255, 0.2);
-        }
-        
-        .slots-container {
-            background: #0d0d15;
-            border-radius: 16px;
-            padding: 24px 16px;
-            margin-bottom: 16px;
-            border: 1px solid #1a1a2a;
-        }
-        
-        .slots {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .slot-wrapper {
-            background: #0a0a10;
-            border-radius: 12px;
-            padding: 8px;
-            border: 1px solid #1a1a2a;
-            flex: 1;
-            max-width: 90px;
-        }
-        
-        .slot {
-            width: 100%;
-            aspect-ratio: 1;
-            background: #0d0d15;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 42px;
-            transition: all 0.3s ease;
-            user-select: none;
-        }
-        
-        .slot.spinning {
-            animation: slotSpin 1.2s cubic-bezier(0.1, 0.8, 0.2, 1);
-        }
-        
-        @keyframes slotSpin {
-            0% { transform: rotateX(0) scale(1); }
-            15% { transform: rotateX(180deg) scale(1.1); }
-            30% { transform: rotateX(360deg) scale(1); }
-            50% { transform: rotateX(540deg) scale(1.1); }
-            70% { transform: rotateX(720deg) scale(1); }
-            85% { transform: rotateX(810deg) scale(1.02); }
-            100% { transform: rotateX(900deg) scale(1); }
-        }
-        
-        .slot.win {
-            border-color: #ffd700;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.1);
-        }
-        
-        .controls {
-            margin-bottom: 16px;
-        }
-        
-        .bet-control {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            background: #1a1a26;
-            border-radius: 12px;
-            padding: 8px 14px;
-            border: 1px solid #2a2a3a;
-        }
-        
-        .bet-control label {
-            color: #6a6a7a;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .bet-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .bet-btn {
-            background: #2a2a3a;
-            border: none;
-            color: #ffffff;
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .bet-btn:hover {
-            background: #3a3a4a;
-        }
-        
-        .bet-btn:active {
-            transform: scale(0.95);
-        }
-        
-        .bet-input {
-            background: #0d0d15;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 600;
-            text-align: center;
-            width: 70px;
-            padding: 6px;
-            outline: none;
-        }
-        
-        .bet-input:focus {
-            border-color: #ffd700;
-        }
-        
-        .bet-input::-webkit-inner-spin-button,
-        .bet-input::-webkit-outer-spin-button {
-            -webkit-appearance: none;
-        }
-        .bet-input[type=number] {
-            -moz-appearance: textfield;
-        }
-        
-        .btn-spin {
-            background: linear-gradient(135deg, #ffd700, #f7a81e);
-            color: #0a0a10;
-            border: none;
-            padding: 16px;
-            font-size: 18px;
-            font-weight: 700;
-            border-radius: 12px;
-            cursor: pointer;
-            width: 100%;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-top: 12px;
-        }
-        
-        .btn-spin:hover:not(:disabled) {
-            transform: scale(1.02);
-            box-shadow: 0 4px 30px rgba(255, 215, 0, 0.2);
-        }
-        
-        .btn-spin:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-spin:active:not(:disabled) {
-            transform: scale(0.97);
-        }
-        
-        .result {
-            text-align: center;
-            font-size: 18px;
-            font-weight: 700;
-            min-height: 50px;
-            padding: 12px;
-            border-radius: 10px;
-            margin-top: 14px;
-            background: #0d0d15;
-            border: 1px solid #1a1a2a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            color: #ffffff;
-        }
-        
-        .result.win {
-            color: #00ff88;
-            border-color: rgba(0, 255, 136, 0.2);
-        }
-        
-        .result.lose {
-            color: #ff4466;
-            border-color: rgba(255, 68, 102, 0.2);
-        }
-        
-        .result.bigwin {
-            color: #ffd700;
-            border-color: rgba(255, 215, 0, 0.3);
-        }
-        
-        .btn-close {
-            width: 100%;
-            padding: 12px;
-            background: #1a1a26;
-            color: #4a4a5a;
-            border: 1px solid #2a2a3a;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 16px;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .btn-close:hover {
-            background: #2a2a3a;
-            color: #8a8a9a;
-        }
-        
-        .btn-close:active {
-            transform: scale(0.97);
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 12px;
-            font-size: 9px;
-            color: #2a2a3a;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-        
-        @media (max-width: 380px) {
-            .slot {
-                font-size: 32px;
-            }
-            .slot-wrapper {
-                max-width: 70px;
-            }
-            .balance-value {
-                font-size: 22px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Casino Royale</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0c0c12;
+    min-height: 100vh;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 12px;
+}
+
+.container {
+    width: 100%;
+    max-width: 380px;
+    background: linear-gradient(180deg, #14141e 0%, #0f0f16 100%);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+}
+
+.header {
+    padding: 18px 20px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+
+.logo span {
+    background: linear-gradient(90deg, #f6d365, #fda085);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.live {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.live-dot {
+    width: 7px;
+    height: 7px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #22c55e;
+    animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.balance-section {
+    padding: 18px 20px 12px;
+}
+
+.balance-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.balance-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.balance-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #fbbf24;
+    letter-spacing: -0.5px;
+}
+
+.balance-value small {
+    font-size: 14px;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-left: 2px;
+}
+
+.refill-btn {
+    display: block;
+    margin: 12px 20px 0;
+    padding: 13px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 12px;
+    letter-spacing: 0.3px;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.refill-btn:active {
+    transform: scale(0.98);
+}
+
+.slots-wrap {
+    margin: 18px 16px;
+    background: #0a0a10;
+    border-radius: 16px;
+    padding: 22px 14px;
+    border: 1px solid rgba(255,255,255,0.04);
+}
+
+.slots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.slot-box {
+    flex: 1;
+    max-width: 88px;
+    background: #111118;
+    border-radius: 12px;
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.slot {
+    width: 100%;
+    aspect-ratio: 1;
+    background: #0d0d14;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    transition: all 0.25s;
+}
+
+.slot.spinning {
+    animation: spin 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes spin {
+    0% { transform: scale(1) rotateX(0); }
+    30% { transform: scale(1.08) rotateX(180deg); }
+    60% { transform: scale(1) rotateX(360deg); }
+    100% { transform: scale(1) rotateX(720deg); }
+}
+
+.slot.win {
+    box-shadow: 0 0 0 2px #fbbf24, 0 0 20px rgba(251,191,36,0.25);
+}
+
+.controls {
+    padding: 0 20px 8px;
+}
+
+.bet-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+
+.bet-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.bet-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bet-btn {
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 600;
+    border-radius: 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.bet-btn:active {
+    background: rgba(255,255,255,0.15);
+}
+
+.bet-input {
+    width: 68px;
+    height: 34px;
+    background: #0a0a10;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+}
+
+.bet-input:focus {
+    border-color: #fbbf24;
+}
+
+.spin-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #111;
+    border: none;
+    border-radius: 13px;
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.spin-btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.spin-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.result {
+    margin: 14px 20px 0;
+    min-height: 48px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: #d1d5db;
+    text-align: center;
+    padding: 0 12px;
+}
+
+.result.win {
+    color: #4ade80;
+    border-color: rgba(74,222,128,0.2);
+    background: rgba(74,222,128,0.05);
+}
+
+.result.lose {
+    color: #f87171;
+    border-color: rgba(248,113,113,0.15);
+}
+
+.result.bigwin {
+    color: #fbbf24;
+    border-color: rgba(251,191,36,0.3);
+    background: rgba(251,191,36,0.06);
+}
+
+.close-btn {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 16px 20px 20px;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    transition: all 0.15s;
+}
+
+.close-btn:active {
+    background: rgba(255,255,255,0.04);
+    color: #9ca3af;
+}
+
+.footer {
+    text-align: center;
+    padding-bottom: 16px;
+    font-size: 10px;
+    color: #4b5563;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+@media (max-width: 360px) {
+    .slot { font-size: 34px; }
+    .balance-value { font-size: 22px; }
+}
+</style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <div class="logo">CASINO <span>ROYALE</span></div>
-        <div class="status"><span class="status-dot"></span> LIVE</div>
+        <div class="live"><span class="live-dot"></span> LIVE</div>
     </div>
-    
-    <div class="balance-card">
-        <span class="balance-label">💰 Баланс</span>
-        <span class="balance-value" id="balance">25 <small>₴</small></span>
-    </div>
-    
-    <a href="https://t.me/Qwile_Games" class="btn-refill" target="_blank">💳 ПОПОЛНИТЬ</a>
-    
-    <div class="slots-container">
-        <div class="slots">
-            <div class="slot-wrapper"><div class="slot" id="slot1">🍒</div></div>
-            <div class="slot-wrapper"><div class="slot" id="slot2">🍋</div></div>
-            <div class="slot-wrapper"><div class="slot" id="slot3">🍇</div></div>
+
+    <div class="balance-section">
+        <div class="balance-card">
+            <div class="balance-label">Баланс</div>
+            <div class="balance-value" id="balance">25 <small>₴</small></div>
         </div>
     </div>
-    
+
+    <a href="https://t.me/Qwile_Games" class="refill-btn" target="_blank">Пополнить баланс</a>
+
+    <div class="slots-wrap">
+        <div class="slots">
+            <div class="slot-box"><div class="slot" id="slot1">🍒</div></div>
+            <div class="slot-box"><div class="slot" id="slot2">🍋</div></div>
+            <div class="slot-box"><div class="slot" id="slot3">🍇</div></div>
+        </div>
+    </div>
+
     <div class="controls">
-        <div class="bet-control">
-            <label>Ставка</label>
-            <div class="bet-actions">
+        <div class="bet-row">
+            <div class="bet-label">Ставка</div>
+            <div class="bet-controls">
                 <button class="bet-btn" id="betMinus">−</button>
                 <input type="number" class="bet-input" id="betAmount" value="25" min="25" step="25">
                 <button class="bet-btn" id="betPlus">+</button>
             </div>
         </div>
-        <button class="btn-spin" id="spinBtn">🎰 SPIN</button>
+        <button class="spin-btn" id="spinBtn">SPIN</button>
     </div>
-    
-    <div id="result" class="result">Нажми SPIN</div>
-    
-    <button class="btn-close" id="closeBtn">✖ Закрыть</button>
+
+    <div class="result" id="result">Нажми SPIN</div>
+
+    <button class="close-btn" id="closeBtn">Закрыть</button>
     <div class="footer">18+ · Играй ответственно</div>
 </div>
 
 <script>
 const tg = window.Telegram.WebApp;
 tg.expand();
+tg.setHeaderColor('#0c0c12');
+tg.setBackgroundColor('#0c0c12');
 
 let balance = 25;
 let isSpinning = false;
-
-const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '⭐', '🍉'];
+const symbols = ['🍒','🍋','🍊','🍇','💎','7️⃣','⭐','🍉'];
 
 const s1 = document.getElementById('slot1');
 const s2 = document.getElementById('slot2');
 const s3 = document.getElementById('slot3');
 const spinBtn = document.getElementById('spinBtn');
 const betInput = document.getElementById('betAmount');
-const betMinus = document.getElementById('betMinus');
-const betPlus = document.getElementById('betPlus');
 const resultDiv = document.getElementById('result');
-const balanceSpan = document.getElementById('balance');
+const balanceEl = document.getElementById('balance');
 
 function getUserId() {
-    const p = new URLSearchParams(window.location.search);
-    return p.get('user_id') || '';
+    return new URLSearchParams(window.location.search).get('user_id') || '';
 }
 
-function updateBalance(b) {
-    balance = b;
-    balanceSpan.textContent = balance + ' ₴';
+function updateBalance(val) {
+    balance = val;
+    balanceEl.innerHTML = val + ' <small>₴</small>';
 }
 
 function spinSlots() {
     if (isSpinning) return;
-    
     const bet = parseInt(betInput.value) || 25;
     if (bet < 25 || bet > balance) {
-        resultDiv.textContent = '❌ Минимальная ставка 25 ₴';
+        resultDiv.textContent = 'Минимальная ставка 25 ₴';
         resultDiv.className = 'result lose';
         return;
     }
-    
+
     isSpinning = true;
     spinBtn.disabled = true;
-    resultDiv.textContent = '🌀 Вращение...';
+    resultDiv.textContent = 'Вращение...';
     resultDiv.className = 'result';
-    
+
     const slots = [s1, s2, s3];
-    
-    let delay = 0;
-    const results = [];
-    const finalResults = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
-    
-    slots.forEach((slot, index) => {
+    const final = slots.map(() => symbols[Math.floor(Math.random() * symbols.length)]);
+    let finished = 0;
+
+    slots.forEach((slot, i) => {
         setTimeout(() => {
             slot.classList.add('spinning');
-            
-            let interval = setInterval(() => {
+            const interval = setInterval(() => {
                 if (slot.classList.contains('spinning')) {
                     slot.textContent = symbols[Math.floor(Math.random() * symbols.length)];
                 }
-            }, 80);
-            
+            }, 70);
+
             setTimeout(() => {
                 clearInterval(interval);
-                slot.textContent = finalResults[index];
+                slot.textContent = final[i];
                 slot.classList.remove('spinning');
-                results[index] = finalResults[index];
-                
-                if (results.length === 3 && results.every(r => r !== undefined)) {
+                finished++;
+                if (finished === 3) {
                     setTimeout(() => {
-                        checkWin(finalResults);
+                        checkWin(final, bet);
                         isSpinning = false;
                         spinBtn.disabled = false;
-                    }, 300);
+                    }, 200);
                 }
-            }, 1200);
-        }, delay);
-        delay += 350;
+            }, 1100);
+        }, i * 280);
     });
 }
 
-function checkWin(results) {
-    const bet = parseInt(betInput.value) || 25;
-    const [r1, r2, r3] = results;
-    
+function checkWin(results, bet) {
+    const [a, b, c] = results;
     let win = 0;
     let msg = '';
-    let className = 'lose';
-    let isBigWin = false;
-    
-    const winChance = Math.random();
-    
-    if (winChance > 0.10) {
+    let cls = 'lose';
+
+    const r = Math.random();
+
+    if (r > 0.11) {
         win = 0;
-        msg = '😔 Повезет в следующий раз';
-        className = 'lose';
-    }
-    else if (r1 === r2 && r2 === r3) {
-        if (Math.random() < 0.05) {
-            if (r1 === '💎') {
-                win = bet * 10;
-                msg = '💎💎💎 ДЖЕКПОТ! x10!';
-                className = 'bigwin';
-                isBigWin = true;
-            } else if (r1 === '7️⃣') {
-                win = bet * 8;
-                msg = '7️⃣7️⃣7️⃣ СЧАСТЛИВЧИК! x8!';
-                className = 'bigwin';
-                isBigWin = true;
-            } else if (r1 === '⭐') {
-                win = bet * 12;
-                msg = '⭐⭐⭐ СУПЕР! x12!';
-                className = 'bigwin';
-                isBigWin = true;
-            } else {
-                win = bet * 4;
-                msg = '🎉 ТРИ ' + r1 + '! x4!';
-                className = 'win';
-            }
+        msg = 'Повезёт в следующий раз';
+    } else if (a === b && b === c) {
+        if (a === '💎') { win = bet * 10; msg = '💎 ДЖЕКПОТ ×10'; cls = 'bigwin'; }
+        else if (a === '7️⃣') { win = bet * 8; msg = '7️⃣ СЧАСТЛИВЧИК ×8'; cls = 'bigwin'; }
+        else if (a === '⭐') { win = bet * 12; msg = '⭐ СУПЕР ×12'; cls = 'bigwin'; }
+        else { win = bet * 4; msg = 'Три в ряд ×4'; cls = 'win'; }
+    } else if (a === b || b === c || a === c) {
+        if (Math.random() < 0.25) {
+            win = Math.floor(bet * 1.5);
+            msg = 'Пара ×1.5';
+            cls = 'win';
         } else {
-            win = 0;
-            msg = '😔 Почти получилось!';
-            className = 'lose';
+            msg = 'Почти...';
         }
+    } else if ([a,b,c].includes('💎') && Math.random() < 0.12) {
+        win = Math.floor(bet * 1.5);
+        msg = '💎 Бриллиант ×1.5';
+        cls = 'win';
+    } else {
+        msg = 'Повезёт в следующий раз';
     }
-    else if (r1 === r2 || r2 === r3 || r1 === r3) {
-        if (Math.random() < 0.2) {
-            win = bet * 1.5;
-            msg = '✨ ПАРА! x1.5!';
-            className = 'win';
-        } else {
-            win = 0;
-            msg = '😔 Почти получилось!';
-            className = 'lose';
-        }
-    }
-    else if (r1 === '💎' || r2 === '💎' || r3 === '💎') {
-        if (Math.random() < 0.1) {
-            win = bet * 1.5;
-            msg = '💎 БРИЛЛИАНТ! x1.5!';
-            className = 'win';
-        } else {
-            win = 0;
-            msg = '😔 Повезет в следующий раз';
-            className = 'lose';
-        }
-    }
-    else {
-        win = 0;
-        msg = '😔 Повезет в следующий раз';
-        className = 'lose';
-    }
-    
-    win = Math.floor(win);
+
     const net = win - bet;
     balance += net;
     updateBalance(balance);
-    
+
     if (net > 0) {
-        const slots = [s1, s2, s3];
-        slots.forEach(s => s.classList.add('win'));
-        setTimeout(() => {
-            slots.forEach(s => s.classList.remove('win'));
-        }, 800);
+        [s1,s2,s3].forEach(s => s.classList.add('win'));
+        setTimeout(() => [s1,s2,s3].forEach(s => s.classList.remove('win')), 700);
     }
-    
-    resultDiv.textContent = msg + ' ' + (net > 0 ? '+' : '') + net + ' ₴';
-    resultDiv.className = 'result ' + className;
-    
-    const userId = getUserId();
-    if (userId) {
+
+    resultDiv.textContent = msg + (net !== 0 ? ` ${net > 0 ? '+' : ''}${net} ₴` : '');
+    resultDiv.className = 'result ' + cls;
+
+    const uid = getUserId();
+    if (uid) {
         fetch('/game_result', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                user_id: userId,
+                user_id: uid,
                 bet: bet,
                 win: net,
                 symbols: results.join('')
             })
-        });
+        }).catch(()=>{});
     }
 }
 
 function loadBalance() {
-    const userId = getUserId();
-    if (userId) {
-        fetch('/get_balance?user_id=' + userId)
-            .then(r => r.json())
-            .then(data => {
-                if (data.balance !== undefined) {
-                    updateBalance(data.balance);
-                }
-            })
-            .catch(() => {});
-    }
+    const uid = getUserId();
+    if (!uid) return;
+    fetch('/get_balance?user_id=' + uid)
+        .then(r => r.json())
+        .then(d => { if (d.balance !== undefined) updateBalance(d.balance); })
+        .catch(()=>{});
 }
 
-setInterval(loadBalance, 10000);
+document.getElementById('betMinus').onclick = () => {
+    let v = parseInt(betInput.value) || 25;
+    betInput.value = Math.max(25, v - 25);
+};
 
-spinBtn.addEventListener('click', spinSlots);
+document.getElementById('betPlus').onclick = () => {
+    let v = parseInt(betInput.value) || 25;
+    betInput.value = Math.min(balance, v + 25);
+};
 
-betMinus.addEventListener('click', () => {
-    let val = parseInt(betInput.value) || 25;
-    val = Math.max(val - 25, 25);
-    betInput.value = val;
-});
+betInput.onchange = () => {
+    let v = parseInt(betInput.value) || 25;
+    if (v < 25) v = 25;
+    if (v % 25 !== 0) v = Math.round(v / 25) * 25;
+    if (v > balance) v = balance;
+    betInput.value = v;
+};
 
-betPlus.addEventListener('click', () => {
-    let val = parseInt(betInput.value) || 25;
-    val = Math.min(val + 25, balance);
-    betInput.value = val;
-});
-
-betInput.addEventListener('change', () => {
-    let val = parseInt(betInput.value) || 25;
-    if (val < 25) val = 25;
-    if (val % 25 !== 0) val = Math.round(val / 25) * 25;
-    if (val > balance) val = balance;
-    betInput.value = val;
-});
-
-document.getElementById('closeBtn').addEventListener('click', () => tg.close());
+spinBtn.onclick = spinSlots;
+document.getElementById('closeBtn').onclick = () => tg.close();
 
 loadBalance();
+setInterval(loadBalance, 12000);
 </script>
 </body>
 </html>'''
 
-# ========== МАРШРУТЫ ==========
+# ========== ROUTES ==========
 @app.route('/')
 def index():
     return HTML
@@ -716,19 +626,20 @@ def index():
 def get_balance():
     user_id = request.args.get('user_id')
     if user_id:
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if user:
-            return jsonify({'balance': user.balance})
+        with app.app_context():
+            user = User.query.filter_by(telegram_id=str(user_id)).first()
+            if user:
+                return jsonify({'balance': user.balance})
     return jsonify({'balance': 25})
 
 @app.route('/game_result', methods=['POST'])
 def game_result():
-    data = request.json
-    user_id = data.get('user_id')
-    bet = data.get('bet')
-    win = data.get('win')
-    symbols = data.get('symbols')
-    
+    data = request.json or {}
+    user_id = str(data.get('user_id', ''))
+    bet = int(data.get('bet', 0))
+    win = int(data.get('win', 0))
+    symbols = data.get('symbols', '')
+
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
@@ -738,291 +649,269 @@ def game_result():
                 user.total_won += win
             else:
                 user.total_lost += abs(win)
+            user.last_active = datetime.utcnow()
+            db.session.add(GameHistory(user_id=user.id, bet=bet, win=win, symbols=symbols))
             db.session.commit()
-            
-            history = GameHistory(
-                user_id=user.id,
-                bet=bet,
-                win=win,
-                symbols=symbols
-            )
-            db.session.add(history)
-            db.session.commit()
-    
     return jsonify({'status': 'ok'})
 
-# ========== КОМАНДЫ БОТА ==========
+# ========== BOT ==========
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = str(message.from_user.id)
-    
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if not user:
             user = User(
                 telegram_id=user_id,
                 username=message.from_user.username,
-                first_name=message.from_user.first_name,
-                last_name=message.from_user.last_name
+                first_name=message.from_user.first_name or '',
+                last_name=message.from_user.last_name or ''
             )
             db.session.add(user)
             db.session.commit()
-    
+
     markup = InlineKeyboardMarkup()
     markup.row(
         InlineKeyboardButton("🎰 Играть", web_app=WebAppInfo(url=f"{WEBAPP_URL}?user_id={user_id}")),
         InlineKeyboardButton("💳 Пополнить", url=REFILL_LINK)
     )
     if user.is_admin:
-        markup.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin"))
-    
+        markup.row(InlineKeyboardButton("👑 Админ-панель", callback_data="admin_panel"))
+
     bot.send_message(
         message.chat.id,
-        f"🎲 Добро пожаловать в Casino Royale, {message.from_user.first_name}!",
+        f"Добро пожаловать в <b>Casino Royale</b>, {message.from_user.first_name}!\n\n"
+        f"Минимальная ставка — 25 ₴",
         reply_markup=markup
     )
 
-@bot.callback_query_handler(func=lambda call: True)
-def callback(call):
-    user_id = str(call.from_user.id)
-    
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if not user:
-            bot.answer_callback_query(call.id, "Ошибка! Напишите /start")
-            return
-        
-        if call.data == "admin" and user.is_admin:
-            show_admin_panel(call.message, user)
-
-def show_admin_panel(message, admin):
-    markup = InlineKeyboardMarkup()
-    markup.row(
-        InlineKeyboardButton("📋 Список пользователей", callback_data="admin_users"),
-        InlineKeyboardButton("🔍 Найти пользователя", callback_data="admin_find")
-    )
-    markup.row(
-        InlineKeyboardButton("🔙 Назад", callback_data="back")
-    )
-    
-    bot.send_message(
-        message.chat.id,
-        "👑 **Админ-панель**\n\nВыберите действие:",
-        reply_markup=markup,
-        parse_mode='Markdown'
-    )
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("admin_") or call.data == "back")
-def admin_callback(call):
-    user_id = str(call.from_user.id)
-    
-    with app.app_context():
-        user = User.query.filter_by(telegram_id=user_id).first()
-        if not user or not user.is_admin:
-            bot.answer_callback_query(call.id, "Нет прав!")
-            return
-        
-        if call.data == "admin_users":
-            show_users_list(call.message, 0)
-        
-        elif call.data.startswith("admin_page_"):
-            page = int(call.data.split("_")[2])
-            show_users_list(call.message, page)
-        
-        elif call.data == "admin_find":
-            bot.send_message(call.message.chat.id, "Введите ID пользователя или username (с @):")
-            bot.register_next_step_handler(call.message, admin_find_user)
-        
-        elif call.data.startswith("admin_action_"):
-            parts = call.data.split("_")
-            target_id = parts[2]
-            action = parts[3]
-            handle_user_action(call.message, target_id, action)
-        
-        elif call.data == "back":
-            start(call.message)
-
-def show_users_list(message, page=0):
-    try:
-        with app.app_context():
-            total_users = User.query.count()
-            if total_users == 0:
-                bot.send_message(message.chat.id, "📋 **Список пользователей пуст**\n\nПока нет зарегистрированных пользователей.", parse_mode='Markdown')
-                return
-            
-            users = User.query.order_by(User.balance.desc()).offset(page * 5).limit(5).all()
-            total_pages = (total_users - 1) // 5 + 1
-            
-            text = f"👥 **Список пользователей (стр. {page+1}/{total_pages})**\n\n"
-            for i, u in enumerate(users, start=page*5+1):
-                text += f"{i}. {u.first_name} (@{u.username or 'нет'})\n"
-                text += f"   ID: `{u.telegram_id}` | Баланс: {u.balance} ₴\n\n"
-            
-            markup = InlineKeyboardMarkup()
-            row = []
-            if page > 0:
-                row.append(InlineKeyboardButton("◀️ Назад", callback_data=f"admin_page_{page-1}"))
-            if (page + 1) * 5 < total_users:
-                row.append(InlineKeyboardButton("Вперед ▶️", callback_data=f"admin_page_{page+1}"))
-            if row:
-                markup.row(*row)
-            markup.row(InlineKeyboardButton("🔄 Обновить", callback_data=f"admin_page_{page}"))
-            markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
-            
-            bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode='Markdown')
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка при загрузке списка: {str(e)}")
-
-def admin_find_user(message):
-    try:
-        query = message.text.strip()
-        if not query:
-            bot.send_message(message.chat.id, "❌ Введите ID или username!")
-            return
-        
-        with app.app_context():
-            if query.startswith('@'):
-                username = query[1:]
-                user = User.query.filter_by(username=username).first()
-            else:
-                user = User.query.filter_by(telegram_id=query).first()
-            
-            if user:
-                markup = InlineKeyboardMarkup()
-                markup.row(
-                    InlineKeyboardButton("➕ Выдать", callback_data=f"admin_action_{user.telegram_id}_give"),
-                    InlineKeyboardButton("➖ Забрать", callback_data=f"admin_action_{user.telegram_id}_take")
-                )
-                markup.row(
-                    InlineKeyboardButton("🗑 Удалить", callback_data=f"admin_action_{user.telegram_id}_delete"),
-                    InlineKeyboardButton("👑 Сделать админом", callback_data=f"admin_action_{user.telegram_id}_makeadmin")
-                )
-                markup.row(InlineKeyboardButton("🔙 Назад", callback_data="back"))
-                
-                bot.send_message(
-                    message.chat.id,
-                    f"👤 **Найден пользователь**\n\n"
-                    f"ID: `{user.telegram_id}`\n"
-                    f"Имя: {user.first_name}\n"
-                    f"Юзернейм: @{user.username or 'нет'}\n"
-                    f"💰 Баланс: {user.balance} ₴\n"
-                    f"🎮 Игр: {user.games_played}\n"
-                    f"🏆 Выиграно: {user.total_won} ₴\n"
-                    f"💔 Проиграно: {user.total_lost} ₴\n"
-                    f"👑 Админ: {'Да' if user.is_admin else 'Нет'}",
-                    reply_markup=markup,
-                    parse_mode='Markdown'
-                )
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден. Проверьте ID или username.")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
-
-def handle_user_action(message, target_id, action):
-    try:
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=target_id).first()
-            if not user:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-                return
-            
-            if action == "give":
-                bot.send_message(message.chat.id, f"Введите сумму для выдачи пользователю {user.first_name} (кратно 25):")
-                bot.register_next_step_handler(message, lambda m: admin_give_currency(m, target_id))
-            
-            elif action == "take":
-                bot.send_message(message.chat.id, f"Введите сумму для забора у пользователя {user.first_name} (кратно 25):")
-                bot.register_next_step_handler(message, lambda m: admin_take_currency(m, target_id))
-            
-            elif action == "delete":
-                db.session.delete(user)
-                db.session.commit()
-                bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} удалён!")
-            
-            elif action == "makeadmin":
-                user.is_admin = True
-                db.session.commit()
-                bot.send_message(message.chat.id, f"✅ Пользователь {user.first_name} теперь администратор!")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
-
-def admin_give_currency(message, target_id):
-    try:
-        amount = int(message.text.strip())
-        if amount <= 0:
-            bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
-            return
-        if amount % 25 != 0:
-            bot.send_message(message.chat.id, "❌ Сумма должна быть кратна 25")
-            return
-        
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=target_id).first()
-            if user:
-                user.balance += amount
-                db.session.commit()
-                bot.send_message(message.chat.id, f"✅ Выдано {amount} ₴ пользователю {user.first_name}")
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Введите число!")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
-
-def admin_take_currency(message, target_id):
-    try:
-        amount = int(message.text.strip())
-        if amount <= 0:
-            bot.send_message(message.chat.id, "❌ Сумма должна быть больше 0")
-            return
-        if amount % 25 != 0:
-            bot.send_message(message.chat.id, "❌ Сумма должна быть кратна 25")
-            return
-        
-        with app.app_context():
-            user = User.query.filter_by(telegram_id=target_id).first()
-            if user:
-                if user.balance >= amount:
-                    user.balance -= amount
-                    db.session.commit()
-                    bot.send_message(message.chat.id, f"✅ Забрано {amount} ₴ у {user.first_name}")
-                else:
-                    bot.send_message(message.chat.id, "❌ Недостаточно средств")
-            else:
-                bot.send_message(message.chat.id, "❌ Пользователь не найден")
-    except ValueError:
-        bot.send_message(message.chat.id, "❌ Введите число!")
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Ошибка: {str(e)}")
-
 @bot.message_handler(commands=['balance'])
-def balance_command(message):
+def balance_cmd(message):
     user_id = str(message.from_user.id)
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user:
-            bot.send_message(
-                message.chat.id,
-                f"💰 Баланс: {user.balance} ₴\n"
+            bot.reply_to(message,
+                f"💰 Баланс: <b>{user.balance} ₴</b>\n"
                 f"🏆 Выиграно: {user.total_won} ₴\n"
                 f"💔 Проиграно: {user.total_lost} ₴\n"
                 f"🎮 Игр: {user.games_played}"
             )
         else:
-            bot.send_message(message.chat.id, "❌ Пользователь не найден. Напишите /start")
+            bot.reply_to(message, "Напиши /start")
 
 @bot.message_handler(commands=['admin'])
-def admin_command(message):
+def admin_cmd(message):
     user_id = str(message.from_user.id)
     with app.app_context():
         user = User.query.filter_by(telegram_id=user_id).first()
         if user and user.is_admin:
-            show_admin_panel(message, user)
+            show_admin(message.chat.id)
         else:
-            bot.send_message(message.chat.id, "❌ Нет прав!")
+            bot.reply_to(message, "Нет доступа")
+
+# ========== АДМИНКА (полностью переписана, не виснет) ==========
+def show_admin(chat_id):
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton("📋 Список пользователей", callback_data="adm_users_0"),
+        InlineKeyboardButton("🔍 Найти пользователя", callback_data="adm_find"),
+        InlineKeyboardButton("« Закрыть", callback_data="adm_close")
+    )
+    bot.send_message(chat_id, "<b>Админ-панель</b>\nВыберите действие:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda c: True)
+def all_callbacks(call):
+    user_id = str(call.from_user.id)
+    data = call.data
+
+    with app.app_context():
+        user = User.query.filter_by(telegram_id=user_id).first()
+        if not user:
+            bot.answer_callback_query(call.id, "Напиши /start")
+            return
+
+        # обычные кнопки
+        if data == "admin_panel":
+            if not user.is_admin:
+                bot.answer_callback_query(call.id, "Нет прав", show_alert=True)
+                return
+            bot.answer_callback_query(call.id)
+            show_admin(call.message.chat.id)
+            return
+
+        if not user.is_admin:
+            bot.answer_callback_query(call.id, "Нет прав", show_alert=True)
+            return
+
+        bot.answer_callback_query(call.id)
+
+        # список пользователей
+        if data.startswith("adm_users_"):
+            page = int(data.split("_")[-1])
+            show_users(call.message, page)
+            return
+
+        if data == "adm_find":
+            msg = bot.send_message(call.message.chat.id, "Введите ID пользователя или @username:")
+            bot.register_next_step_handler(msg, process_find)
+            return
+
+        if data == "adm_close":
+            try:
+                bot.delete_message(call.message.chat.id, call.message.message_id)
+            except:
+                pass
+            return
+
+        # действия над пользователем
+        if data.startswith("adm_act_"):
+            parts = data.split("_")
+            target_id = parts[2]
+            action = parts[3]
+            process_action(call.message, target_id, action)
+            return
+
+def show_users(message, page=0):
+    with app.app_context():
+        total = User.query.count()
+        if total == 0:
+            bot.edit_message_text("Пользователей пока нет", message.chat.id, message.message_id)
+            return
+
+        per_page = 6
+        users = User.query.order_by(User.balance.desc()).offset(page * per_page).limit(per_page).all()
+        total_pages = max(1, (total + per_page - 1) // per_page)
+
+        text = f"<b>Пользователи</b> · стр. {page+1}/{total_pages}\n\n"
+        for i, u in enumerate(users, start=page*per_page + 1):
+            name = u.first_name or "—"
+            uname = f"@{u.username}" if u.username else "нет"
+            text += f"{i}. <b>{name}</b> ({uname})\n"
+            text += f"   ID: <code>{u.telegram_id}</code> · {u.balance} ₴\n\n"
+
+        markup = InlineKeyboardMarkup()
+        row = []
+        if page > 0:
+            row.append(InlineKeyboardButton("‹ Назад", callback_data=f"adm_users_{page-1}"))
+        if page + 1 < total_pages:
+            row.append(InlineKeyboardButton("Вперёд ›", callback_data=f"adm_users_{page+1}"))
+        if row:
+            markup.row(*row)
+        markup.row(InlineKeyboardButton("🔄 Обновить", callback_data=f"adm_users_{page}"))
+        markup.row(InlineKeyboardButton("« В меню", callback_data="admin_panel"))
+
+        try:
+            bot.edit_message_text(text, message.chat.id, message.message_id, reply_markup=markup)
+        except:
+            bot.send_message(message.chat.id, text, reply_markup=markup)
+
+def process_find(message):
+    query = (message.text or "").strip()
+    if not query:
+        bot.send_message(message.chat.id, "Пустой запрос")
+        return
+
+    with app.app_context():
+        if query.startswith("@"):
+            user = User.query.filter_by(username=query[1:]).first()
+        else:
+            user = User.query.filter_by(telegram_id=query).first()
+
+        if not user:
+            bot.send_message(message.chat.id, "Пользователь не найден")
+            return
+
+        markup = InlineKeyboardMarkup(row_width=2)
+        markup.add(
+            InlineKeyboardButton("➕ Выдать", callback_data=f"adm_act_{user.telegram_id}_give"),
+            InlineKeyboardButton("➖ Забрать", callback_data=f"adm_act_{user.telegram_id}_take"),
+            InlineKeyboardButton("🗑 Удалить", callback_data=f"adm_act_{user.telegram_id}_del"),
+            InlineKeyboardButton("👑 Админ", callback_data=f"adm_act_{user.telegram_id}_admin"),
+        )
+        markup.row(InlineKeyboardButton("« В меню", callback_data="admin_panel"))
+
+        bot.send_message(
+            message.chat.id,
+            f"<b>{user.first_name or '—'}</b>\n"
+            f"ID: <code>{user.telegram_id}</code>\n"
+            f"Username: @{user.username or 'нет'}\n"
+            f"Баланс: <b>{user.balance} ₴</b>\n"
+            f"Игр: {user.games_played} · Выиграно: {user.total_won} · Проиграно: {user.total_lost}\n"
+            f"Админ: {'да' if user.is_admin else 'нет'}",
+            reply_markup=markup
+        )
+
+def process_action(message, target_id, action):
+    with app.app_context():
+        user = User.query.filter_by(telegram_id=target_id).first()
+        if not user:
+            bot.send_message(message.chat.id, "Пользователь не найден")
+            return
+
+        if action == "give":
+            msg = bot.send_message(message.chat.id, f"Сумма для выдачи (кратно 25):")
+            bot.register_next_step_handler(msg, lambda m: do_give(m, target_id))
+        elif action == "take":
+            msg = bot.send_message(message.chat.id, f"Сумма для забора (кратно 25):")
+            bot.register_next_step_handler(msg, lambda m: do_take(m, target_id))
+        elif action == "del":
+            name = user.first_name
+            db.session.delete(user)
+            db.session.commit()
+            bot.send_message(message.chat.id, f"Пользователь {name} удалён")
+        elif action == "admin":
+            user.is_admin = True
+            db.session.commit()
+            bot.send_message(message.chat.id, f"{user.first_name} теперь админ")
+
+def do_give(message, target_id):
+    try:
+        amount = int(message.text.strip())
+        if amount <= 0 or amount % 25 != 0:
+            bot.send_message(message.chat.id, "Сумма должна быть положительной и кратной 25")
+            return
+        with app.app_context():
+            user = User.query.filter_by(telegram_id=target_id).first()
+            if user:
+                user.balance += amount
+                db.session.commit()
+                bot.send_message(message.chat.id, f"Выдано {amount} ₴ → {user.first_name}")
+            else:
+                bot.send_message(message.chat.id, "Пользователь не найден")
+    except:
+        bot.send_message(message.chat.id, "Введите число")
+
+def do_take(message, target_id):
+    try:
+        amount = int(message.text.strip())
+        if amount <= 0 or amount % 25 != 0:
+            bot.send_message(message.chat.id, "Сумма должна быть положительной и кратной 25")
+            return
+        with app.app_context():
+            user = User.query.filter_by(telegram_id=target_id).first()
+            if user:
+                if user.balance < amount:
+                    bot.send_message(message.chat.id, "Недостаточно средств")
+                    return
+                user.balance -= amount
+                db.session.commit()
+                bot.send_message(message.chat.id, f"Забрано {amount} ₴ у {user.first_name}")
+            else:
+                bot.send_message(message.chat.id, "Пользователь не найден")
+    except:
+        bot.send_message(message.chat.id, "Введите число")
 
 # ========== ЗАПУСК ==========
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    threading.Thread(target=lambda: bot.polling(non_stop=True), daemon=True).start()
-    app.run(host='0.0.0.0', port=port)
+    def run_bot():
+        while True:
+            try:
+                bot.polling(none_stop=True, interval=1, timeout=30)
+            except Exception as e:
+                print("Bot error:", e)
+                import time
+                time.sleep(5)
+    threading.Thread(target=run_bot, daemon=True).start()
+    app.run(host='0.0.0.0', port=port, debug=False)
